@@ -174,21 +174,37 @@ body::after{opacity:.16}
 .cyclebox .ctrack i.due{background:var(--red)}
 .cyclebox .clabel{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
 .ff{background:var(--sky);color:var(--navy);font-weight:700;font-size:13px;padding:3px 10px;border-radius:var(--radius-pill);letter-spacing:.06em;text-transform:uppercase}
-.modetag{font-size:13px;font-weight:700;color:var(--ink-muted)}
+.modetag{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:2px}
+.modetag-row{display:none}
+
+.ff{font-size:11px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.btn.xs{padding:6px 12px;font-size:14px;border-width:2px;min-height:0;line-height:1.2}
+@media (max-width:620px){
+  .topbar{gap:4px 10px;flex-wrap:wrap}
+  .topbar .stat span{font-size:11px;letter-spacing:.06em}
+  #chartTop{font-size:13px;padding:5px 10px;flex:none}
+  .modetag-row{font-size:10.5px !important}
+  .topbar .stat b{font-size:22px}
+  #chartTop{margin-left:auto}
+  .cyclebox{order:5;flex-basis:100%}
+  .cyclebox .modetag{display:none}
+  .modetag-row{display:block;align-self:center;margin:0;line-height:1.25;max-width:7em}
+}
 .hint{background:var(--navy);color:#fff;border-radius:var(--radius-md);padding:10px 14px;margin:0 0 12px;font-size:16px}
 .main{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
 @media (max-width:900px){
   .main{grid-template-columns:1fr;gap:0}
   .main > div{display:contents}
-  .scene{order:1}.mon{order:2;margin-top:10px}.actions{order:3}.roster{order:4}.roster-note{order:5}.loghead{order:6}.log{order:7}
-  .actions{display:grid;grid-template-columns:1fr 1fr}
+  .scene{order:1}.mon{order:2;margin-top:10px}.actions{order:3}.roster-note{order:4;margin-top:12px}.roster{order:5}.loghead{order:6}.log{order:7}
   .actions .btn{font-size:15px;padding:10px 8px}
-  .actions > .phead,.actions > .plabel,.actions > .pgrid,.actions > .prow{grid-column:1/3}
 }
 .scene{background:var(--ice);border-radius:var(--radius-md);overflow:hidden}
 .scene svg{display:block;width:100%;height:auto}
 .fig{transition:transform .9s ease-in-out}
 .bub{transition:opacity .2s;pointer-events:none}
+.troublebtn{cursor:pointer;transition:transform .9s ease-in-out}
+.troublebtn:hover rect,.troublebtn:focus-visible rect{fill:#ee3c36}
+.troublebtn:focus{outline:none}
 .figbtn{cursor:pointer}
 .figbtn:focus{outline:none}
 .figbtn.hover .torso,.figbtn:focus-visible .torso{stroke:#022033;stroke-width:4}
@@ -201,17 +217,17 @@ body::after{opacity:.16}
 .bagging .bag{transform-box:fill-box;transform-origin:center;animation:bag 6s ease-in-out infinite}
 @keyframes bag{0%,100%{transform:scale(1)}6%{transform:scale(.62)}14%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.pushing,#dog.compressing .chest,.bagging .bag{animation:none}.fig{transition:none}}
-.roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
-.member{appearance:none;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:8px;align-items:center;text-align:left;padding:10px 12px;border:2px solid var(--mist);border-radius:var(--radius-md);background:#fff;cursor:pointer;font:inherit}
+.roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-top:4px}
+.member{appearance:none;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:8px;row-gap:0;align-items:center;text-align:left;padding:6px 10px 7px;border:2px solid var(--mist);border-radius:var(--radius-md);background:#fff;cursor:pointer;font:inherit;line-height:1.2}
 .member:hover:not(:disabled){border-color:var(--navy);background:var(--ice)}
 .member:disabled{opacity:.55;cursor:default}
 .member .dot{grid-row:1/3}
-.dot{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--navy);flex:none}
-.mname{font-family:var(--display);font-weight:800;font-size:17px}
-.mtask{font-size:13.5px;color:var(--ink-muted);grid-column:2}
-.mbar{grid-column:1/3;height:5px;background:var(--mist);border-radius:3px;overflow:hidden;margin-top:6px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid var(--navy);flex:none}
+.mname{font-family:var(--display);font-weight:800;font-size:16px}
+.mtask{font-size:13px;color:var(--ink-muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar{grid-column:1/3;height:3px;background:var(--mist);border-radius:2px;overflow:hidden;margin-top:4px}
 .mbar i{display:block;height:100%;width:0;background:var(--navy)}
-.roster-note{font-size:13px;color:var(--ink-muted);margin:6px 2px 0}
+.roster-note{font-size:13px;color:var(--ink-muted);margin:8px 2px 0}
 .mon{background:var(--navy);border-radius:var(--radius-md);overflow:hidden}
 .mrow{display:flex;position:relative}
 .mrow + .mrow{border-top:1px solid rgba(132,209,245,.25)}
@@ -227,6 +243,8 @@ body::after{opacity:.16}
 .off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:14px;font-weight:600;background:var(--navy)}
 .actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .actions .btn{width:100%;font-size:17px;padding:11px 16px}
+.arow{display:flex;gap:8px}
+.arow .btn{flex:1 1 0;min-width:0;padding:11px 8px}
 .btn.pulse{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(238,60,54,.55)}50%{box-shadow:0 0 0 8px rgba(238,60,54,0)}}
 .btn.shock{background:#b3261e}
@@ -237,6 +255,9 @@ body::after{opacity:.16}
 .pcount.over{color:#ffe08a}
 .plabel{font-weight:700;margin:12px 0 6px}
 .pgrid{display:flex;flex-wrap:wrap;gap:6px}
+.pgrid.one-row{flex-wrap:nowrap}
+.pgrid.one-row .chip{flex:1 1 0;min-width:0;justify-content:center;padding:8px 4px;font-size:15px;white-space:nowrap}
+@media (max-width:420px){.pgrid.one-row .chip{font-size:14px;padding:8px 2px;gap:4px}.pgrid.one-row .dot{width:11px;height:11px}}
 .chip{appearance:none;display:inline-flex;align-items:center;gap:6px;border:2px solid var(--mist);background:#fff;border-radius:var(--radius-md);padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
 .chip small{font-weight:400;color:var(--ink-muted);font-size:12px;display:block}
 .chip.on{border-color:var(--navy);background:var(--navy);color:#fff}
@@ -318,6 +339,13 @@ table.chart th.hl{background:var(--navy);color:#fff}
 .elist b{display:inline-block;min-width:44px;font-variant-numeric:tabular-nums}
 #good b{color:#1f7a4d}#bad b{color:var(--red-deep)}
 .proto{font-size:14px;color:var(--ink-muted)}
+@media (max-width:380px){
+  .topbar{gap:4px 8px !important}
+  .topbar .stat b{font-size:20px !important}
+  .topbar .stat span{font-size:10px !important;letter-spacing:.04em !important}
+  #chartTop{font-size:12px !important;padding:4px 8px !important}
+  .modetag-row{font-size:9.5px !important;letter-spacing:.04em !important}
+}
 </style>
 </head>
 <body>
@@ -341,7 +369,6 @@ table.chart th.hl{background:var(--navy);color:#fff}
       <li><b>Run 2-minute cycles:</b> when everything you want is underway, tap <b>Finish cycle</b> to skip ahead to just before the 2-minute mark.</li>
       <li><b>Pause and check in under 10 seconds:</b> name the rhythm, then pick who takes over compressions.</li>
       <li><b>Dose from the chart:</b> type each drug's volume, using the RECOVER dosing chart.</li>
-      <li><b>Watch ETCO₂:</b> at 18 mmHg or below, troubleshoot compressions.</li>
     </ul>
     <div class="row">
       <button class="btn" id="startStd">Start the case</button>
@@ -355,17 +382,16 @@ table.chart th.hl{background:var(--navy);color:#fff}
     <div class="topbar">
       <div class="stat"><span>Case clock</span><b id="clock">0:00</b></div>
       <div class="stat"><span>Cycle</span><b id="cycleNum">–</b></div>
-      <div class="cyclebox"><div class="clabel"><span>2-minute cycle</span><span id="cycleLeft">not started</span></div><div class="ctrack"><i id="cycleBar"></i></div></div>
-      <span class="ff hidden" id="ffBadge">Fast-forward</span>
-      <span class="modetag" id="modeTag"></span>
-      <button class="btn ghost sm" id="chartTop">Dosing chart</button>
+      <span class="modetag modetag-row"></span>
+      <div class="cyclebox"><span class="modetag" id="modeTag"></span><div class="clabel"><span>2-minute cycle <span class="ff hidden" id="ffBadge">Fast-forward</span></span><span id="cycleLeft">not started</span></div><div class="ctrack"><i id="cycleBar"></i></div></div>
+      <button class="btn ghost xs" id="chartTop">Dosing chart</button>
     </div>
     <div class="hint hidden" id="hint"></div>
     <div class="main">
       <div>
         <div class="scene">
-          <svg viewBox="0 -90 800 380" role="img" aria-label="The CPR team around a dog in lateral recumbency on a treatment table">
-            <rect x="0" y="270" width="800" height="20" fill="#c4eef9"/>
+          <svg viewBox="-100 -90 900 380" role="img" aria-label="The CPR team around a dog in lateral recumbency on a treatment table">
+            <rect x="-100" y="270" width="900" height="20" fill="#c4eef9"/>
             <g id="layerBack"></g>
             <rect x="234" y="196" width="432" height="14" rx="4" fill="#022033"/>
             <rect x="266" y="210" width="12" height="60" fill="#022033"/><rect x="622" y="210" width="12" height="60" fill="#022033"/>
@@ -413,8 +439,8 @@ table.chart th.hl{background:var(--navy);color:#fff}
             <g id="layerBubbles"></g>
           </svg>
         </div>
-        <div class="roster" id="roster"></div>
         <p class="roster-note">Tap a teammate, in the scene or below, to give them a task.</p>
+        <div class="roster" id="roster"></div>
         <div class="loghead"><b>Team log</b><span>Newest first · scroll for earlier events</span></div>
         <ul class="log" id="log" aria-label="Team log, newest first"></ul>
       </div>
@@ -843,7 +869,7 @@ window.SCENARIO = {
 
   // ---------- scene geometry (SVG units) ----------
   const STATION_X = { chest: 466, head: 372, drug: 177, monitor: 709, defib: 772 };
-  const IDLE_X = [28, 72, 116, 156];
+  const IDLE_X = [-66, -2, 62, 126];   // waiting area at the left (scene starts at x = -100)
   const TASKS = {
     compress: { label: "Start compressions", station: "chest", continuous: true },
     intubate: { label: "Intubate", station: "head" },
@@ -855,7 +881,7 @@ window.SCENARIO = {
     drug: { label: "Give a drug", station: "drug" },
     charge: { label: "Charge the defibrillator", station: "defib" }
   };
-  const RHYTHM_CHOICES = [["asys", "Asystole"], ["pea", "PEA"], ["vf", "VF"], ["pvt", "Pulseless VT"], ["rosc", "ROSC"]];
+  const RHYTHM_CHOICES = [["asys", "Asystole"], ["pea", "PEA"], ["vf", "VF"], ["pvt", "Pulseless VT", "PVT"], ["rosc", "ROSC"]];
 
   // ---------- state ----------
   let S = null;
@@ -878,7 +904,8 @@ window.SCENARIO = {
       compressingLast: false, stopReal: realNow(), artSeed: Math.random() * 100,
       variant: L.variant(Math.random() * 100),
       outcome: null,
-      lastReal: realNow()
+      lastReal: realNow(),
+      artT: 0, artPrev: 0, breathPh: 0, breathPrev: 0, breathIdx: -1, breathEt: null
     };
   }
 
@@ -985,6 +1012,9 @@ window.SCENARIO = {
     } else S.rate = 1;
     const sdt = dt * (S.phase === "pause" ? 1 : S.rate);
     S.sim += sdt;
+    // monitor clocks: compression artifact and breaths speed up with fast-forward, without jumps
+    S.artPrev = S.artT; S.artT += dt * Math.min(6, S.rate);
+    S.breathPrev = S.breathPh; S.breathPh += dt * Math.min(12, S.phase === "pause" ? 1 : S.rate) / 6;   // in breaths
 
     // tasks
     S.team.forEach(m => { if (m.task && m.task.dur && S.sim - m.task.start >= m.task.dur) finishTask(m); });
@@ -1210,7 +1240,7 @@ window.SCENARIO = {
     if (!S.iv && !busy("checkiv") && !busy("placeiv")) return "This patient already has an IV catheter: have someone check it.";
     if (S.capno && etco2Now() <= 18) {
       if (S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
-      return "ETCO₂ is " + etco2Now() + " mmHg (18 or below): troubleshoot compressions.";
+      return "ETCO₂ is " + etco2Now() + " mmHg (18 or below): tap Troubleshoot compressions above " + c.name + ".";
     }
     const vaso = S.drugs.filter(d => SC.vasopressors.includes(d.key) && !d.beforeDx);
     const nonShock = S.pauses.some(p => L.byKey(p.rhythm).cat !== "rosc");
@@ -1270,26 +1300,25 @@ window.SCENARIO = {
     ff.addEventListener("click", () => { S.ffTarget = S.cycleStart + T.cycle - T.fastForwardStopsBefore; S.ffRealLeft = T.fastForwardRealSeconds; renderActions(); });
     const pause = el("button", "btn", "Pause and check"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
     pause.addEventListener("click", startPause);
-    const tr = el("button", "btn ghost", "Troubleshoot compressions"); tr.disabled = !compressor();
-    tr.addEventListener("click", openCoaching);
-    const ch = el("button", "btn ghost", "Dosing chart"); ch.addEventListener("click", openChart);
-    box.append(pause, ff, tr, ch);
+    const row = el("div", "arow"); row.append(pause, ff);
+    box.append(row);
   }
   function renderPausePanel(box) {
     const p = S.pause;
     const head = el("div", "phead"); head.append(el("b", null, "Pause and check"), el("span", "pcount", "10 s")); head.lastChild.id = "pcount";
     box.appendChild(head);
     box.appendChild(el("p", "plabel", "1. Rhythm diagnosis"));
-    const rg = el("div", "pgrid");
-    RHYTHM_CHOICES.forEach(([k, lab]) => {
-      const b = el("button", "chip" + (p.dx === k ? " on" : ""), lab); b.type = "button";
+    const rg = el("div", "pgrid one-row");
+    RHYTHM_CHOICES.forEach(([k, lab, short]) => {
+      const b = el("button", "chip" + (p.dx === k ? " on" : ""), short || lab); b.type = "button";
+      if (short) b.setAttribute("aria-label", lab);
       b.addEventListener("click", () => { p.dx = k; renderActions(); });
       rg.appendChild(b);
     });
     box.appendChild(rg);
     if (p.dx !== "rosc") {
       box.appendChild(el("p", "plabel", "2. Who takes over compressions?"));
-      const cg = el("div", "pgrid");
+      const cg = el("div", "pgrid one-row");
       S.team.forEach(m => {
         const b = el("button", "chip" + (p.next === m.id ? " on" : "")); b.type = "button";
         const d = el("span", "dot"); d.style.background = m.shirt;
@@ -1338,7 +1367,8 @@ window.SCENARIO = {
     modal(m.name + ": what should they do?", body => {
       const cur = el("p", "muted small", "Currently: " + taskText(m)); body.appendChild(cur);
       const opts = [];
-      opts.push(["compress", "Start compressions", "Chest", true]);
+      if (m.task && m.task.type === "compress") opts.push(["coach", "Troubleshoot compressions", "Coach " + m.name, true]);
+      else opts.push(["compress", "Start compressions", "Chest", true]);
       if (!S.intubated) opts.push(["intubate", "Intubate", T.tasks.intubate + " s", !S.team.some(x => x.task && x.task.type === "intubate")]);
       else opts.push(["ventilate", "Ventilate every 6 s", "Head", true]);
       if (!S.ecg) opts.push(["ecg", "Attach ECG leads", T.tasks.ecg + " s", true]);
@@ -1352,6 +1382,7 @@ window.SCENARIO = {
         const b = el("button", "titem"); b.type = "button"; b.disabled = !ok;
         b.append(el("span", null, label), el("small", null, meta));
         b.addEventListener("click", () => {
+          if (type === "coach") return openCoaching();
           if (type === "drug") return openDrug(m);
           if (type === "charge") return openCharge(m);
           closeModal(); assign(m, type);
@@ -1488,8 +1519,9 @@ window.SCENARIO = {
     back.replaceChildren(); front.replaceChildren(); bub.replaceChildren();
     S.team.forEach(m => {
       const gb = svgEl("g", { class: "fig", id: "fb-" + m.id }), ib = svgEl("g", { class: "anim" });
-      ib.append(svgEl("rect", { x: -18, y: 176, width: 14, height: 92, rx: 6, fill: "#022033" }), svgEl("rect", { x: 4, y: 176, width: 14, height: 92, rx: 6, fill: "#022033" }),
-        svgEl("rect", { x: -26, y: 66, width: 52, height: 112, rx: 16, fill: m.shirt, class: "torso" }), svgEl("circle", { cx: 0, cy: 44, r: 18, fill: "#022033" }));
+      // legs stay planted; the upper body (in .anim) moves during compressions
+      gb.append(svgEl("rect", { x: -18, y: 170, width: 14, height: 98, rx: 6, fill: "#022033" }), svgEl("rect", { x: 4, y: 170, width: 14, height: 98, rx: 6, fill: "#022033" }));
+      ib.append(svgEl("rect", { x: -26, y: 66, width: 52, height: 112, rx: 16, fill: m.shirt, class: "torso" }), svgEl("circle", { cx: 0, cy: 44, r: 18, fill: "#022033" }));
       const tag = svgEl("g", {}); const tw = m.name.length * 8 + 16;
       tag.append(svgEl("rect", { x: -tw / 2, y: 2, width: tw, height: 18, rx: 9, fill: "#fff", stroke: m.shirt, "stroke-width": 3 }));
       const tt = svgEl("text", { x: 0, y: 15.5, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#022033", "font-family": "Source Sans 3, Arial, sans-serif" }); tt.textContent = m.name; tag.appendChild(tt);
@@ -1510,6 +1542,15 @@ window.SCENARIO = {
       });
       gb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTaskMenu(m.id); } });
     });
+    const tb = svgEl("g", { id: "troubleBtn", class: "troublebtn", tabindex: "0", role: "button", "aria-label": "Troubleshoot compressions" });
+    tb.append(svgEl("rect", { x: -104, y: -50, width: 208, height: 30, rx: 15, fill: "#022033", stroke: "#fff", "stroke-width": 2 }),
+              svgEl("path", { d: "M-6 -20 L 0 -12 L 6 -20 Z", fill: "#022033" }));
+    const tt = svgEl("text", { x: 0, y: -30, "text-anchor": "middle", "font-family": "Outfit, Arial, sans-serif", "font-weight": 700, "font-size": 14, fill: "#fff" });
+    tt.textContent = "Troubleshoot compressions"; tb.appendChild(tt);
+    tb.style.display = "none";
+    tb.addEventListener("click", openCoaching);
+    tb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCoaching(); } });
+    bub.appendChild(tb);
     sceneBuilt = true;
   }
   function stationOf(m) {
@@ -1522,7 +1563,7 @@ window.SCENARIO = {
     if (pose === "ventilate") return '<path ' + a + ' d="M-13 84 L -30 168 M 12 84 L 18 150"/><g class="bag"><ellipse cx="-36" cy="176" rx="11" ry="7" fill="#84d1f5" stroke="#022033" stroke-width="2"/></g>';
     if (pose === "intubate") return '<path ' + a + ' d="M-13 84 L -32 172 M 12 84 L -16 174"/>';
     if (pose === "cart") return '<path ' + a + ' d="M-12 84 L -22 196 M 12 84 L 22 196"/>';
-    return '<path ' + a + ' d="M-24 80 L -30 150 M 24 80 L 30 150"/>';
+    return '<path ' + a + ' d="M-27 82 L -27 150 M 27 82 L 27 150"/>';   // arms hanging straight down
   }
   function renderScene(r) {
     if (!sceneBuilt) buildScene();
@@ -1536,7 +1577,7 @@ window.SCENARIO = {
       const arms = $("ff-" + m.id).firstChild;
       if (arms.dataset.pose !== pose) { arms.dataset.pose = pose; arms.innerHTML = armsFor(pose); }
       const pushing = pose === "chest" && S.phase === "running";
-      [$("fb-" + m.id).firstChild, arms].forEach(g => { g.classList.toggle("pushing", pushing); g.style.animationDuration = pushing ? (0.545 / Math.min(6, S.rate)) + "s" : ""; });
+      [$("fb-" + m.id).querySelector(".anim"), arms].forEach(g => { g.classList.toggle("pushing", pushing); g.style.animationDuration = pushing ? (0.545 / Math.min(6, S.rate)) + "s" : ""; });
       arms.classList.toggle("bagging", pose === "ventilate");
       const bag = arms.querySelector(".bag"); if (bag) bag.style.animationDuration = (6 / Math.min(12, S.rate)) + "s";
       // progress bar
@@ -1546,13 +1587,20 @@ window.SCENARIO = {
       // speech bubble (positioned after the loop so overlapping bubbles can be stacked)
       m._x = x;
     });
-    // speech bubbles: stack any that would overlap a neighbor's
-    const vis = S.team.filter(m => m.bubble && r < m.bubble.until).sort((a, b) => a._x - b._x);
+    // "Troubleshoot compressions" floats above whoever is compressing (only while compressions run)
+    const tb = $("troubleBtn"), cmp = compressor(), showTb = !!cmp && S.phase === "running";
     const placed = [];
+    if (showTb) {
+      const tx = Math.min(Math.max(cmp._x, 8), 692);
+      if (tb.dataset.x !== String(tx)) { tb.dataset.x = tx; tb.style.transform = "translate(" + tx + "px, 0px)"; }
+      tb.style.display = ""; placed.push({ l: tx - 104, r: tx + 104, level: 0 });   // bubbles stack above it
+    } else tb.style.display = "none";
+    // speech bubbles: stack any that would overlap a neighbor's (or the button)
+    const vis = S.team.filter(m => m.bubble && r < m.bubble.until).sort((a, b) => a._x - b._x);
     S.team.forEach(m => { if (!vis.includes(m)) { const bg = $("bb-" + m.id); bg.style.opacity = 0; bg.dataset.key = ""; } });
     vis.forEach(m => {
       const text = m.bubble.text, w = Math.max(60, text.length * 7.2 + 20), x = m._x;
-      const left = Math.min(Math.max(-w / 2, -x + 4), 800 - x - w - 4), absL = x + left, absR = absL + w;
+      const left = Math.min(Math.max(-w / 2, -x - 96), 800 - x - w - 4), absL = x + left, absR = absL + w;
       let level = 0; while (placed.some(p => p.level === level && absL < p.r + 6 && absR > p.l - 6)) level++;
       placed.push({ l: absL, r: absR, level });
       const y = -52 - level * 34, bg = $("bb-" + m.id), key = text + "|" + level;
@@ -1577,8 +1625,8 @@ window.SCENARIO = {
     const c = $("co2"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
     c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  function ecgSignal(tRel, r) {
-    if (compressingActive()) return L.compressionArtifact(tRel, S.artSeed);
+  function ecgSignal(tRel, r, artT) {
+    if (compressingActive()) return L.compressionArtifact(artT, S.artSeed);
     const since = r - S.stopReal;
     const rh = rhythm();
     const v = rh.fn(Math.max(0, since), S.variant);
@@ -1591,7 +1639,11 @@ window.SCENARIO = {
     if (S.ecg) {
       if (!ecgM) sizeMonitor();
       const tNow = r - S.ecgReal0, idxNow = Math.floor(tNow * ECG_HZ);
-      for (let i = Math.max(ecgLastIdx + 1, idxNow - ECG_N + 1); i <= idxNow; i++) { const slot = ((i % ECG_N) + ECG_N) % ECG_N; ecgVal[slot] = ecgSignal(i / ECG_HZ, r); ecgStamp[slot] = i; }
+      const i0 = Math.max(ecgLastIdx + 1, idxNow - ECG_N + 1), nE = Math.max(1, idxNow - i0 + 1);
+      for (let i = i0; i <= idxNow; i++) {
+        const slot = ((i % ECG_N) + ECG_N) % ECG_N, f = (i - i0 + 1) / nE;
+        ecgVal[slot] = ecgSignal(i / ECG_HZ, r, S.artPrev + f * (S.artT - S.artPrev)); ecgStamp[slot] = i;
+      }
       ecgLastIdx = idxNow;
       Monitor.sweep(ecgM, t => { const i = Math.floor(t * ECG_HZ), slot = ((i % ECG_N) + ECG_N) % ECG_N; return ecgStamp[slot] === i ? ecgVal[slot] : null; }, tNow);
       // HR
@@ -1612,15 +1664,18 @@ window.SCENARIO = {
     if (!S.capno) { $("co2Val").textContent = "--"; return; }
     if (co2Real0 == null) co2Real0 = r;
     const vent = ventilator(), et = etco2Now(), tNow = r - co2Real0, idxNow = Math.floor(tNow * CO2_HZ);
-    const breath = 6 / Math.min(12, S.rate);
-    for (let i = Math.max(co2LastIdx + 1, idxNow - CO2_N + 1); i <= idxNow; i++) {
-      // one breath every 6 s (compressed during fast-forward); s = seconds into the breath on a 6-s scale
-      const slot = i % CO2_N, tt = i / CO2_HZ, sec = (tt % breath) / breath * 6; let v = 0;
+    const c0 = Math.max(co2LastIdx + 1, idxNow - CO2_N + 1), nC = Math.max(1, idxNow - c0 + 1);
+    for (let i = c0; i <= idxNow; i++) {
+      // breath phase advances smoothly (faster during fast-forward); sec = seconds into the breath on a 6-s scale
+      const slot = i % CO2_N, ph = S.breathPrev + (i - c0 + 1) / nC * (S.breathPh - S.breathPrev);
+      const bi = Math.floor(ph), sec = (ph - bi) * 6; let v = 0;
+      if (bi !== S.breathIdx) { S.breathIdx = bi; S.breathEt = et; }   // each breath keeps the value it started with
+      const be = S.breathEt == null ? et : S.breathEt;
       if (vent && S.phase !== "ended") {
         if (sec < 1.0) v = 0;                                          // inspiration
-        else if (sec < 1.2) v = et * (sec - 1.0) / 0.2;                // expiratory upstroke
-        else if (sec < 2.7) v = et * (0.96 + 0.04 * (sec - 1.2) / 1.5); // alveolar plateau (~1.5 s)
-        else if (sec < 2.9) v = et * (1 - (sec - 2.7) / 0.2);          // back to zero
+        else if (sec < 1.2) v = be * (sec - 1.0) / 0.2;                // expiratory upstroke
+        else if (sec < 2.7) v = be * (0.96 + 0.04 * (sec - 1.2) / 1.5); // alveolar plateau (~1.5 s)
+        else if (sec < 2.9) v = be * (1 - (sec - 2.7) / 0.2);          // back to zero
         else v = 0;                                                    // zero until the next exhalation
       }
       co2Val[slot] = v; co2Stamp[slot] = i;
@@ -1630,7 +1685,8 @@ window.SCENARIO = {
     ctx.strokeStyle = "rgba(132,209,245,.18)"; ctx.lineWidth = 1; ctx.beginPath();
     [10, 20, 30, 40].forEach(mm => { const y = h - 6 - mm / 50 * (h - 12); ctx.moveTo(0, y); ctx.lineTo(w, y); }); ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = '600 10px "Source Sans 3", Arial'; ctx.fillText("CO₂ 0–50 mmHg", 6, 12);
-    const y18 = h - 6 - 18 / 50 * (h - 12); ctx.strokeStyle = "rgba(238,60,54,.5)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, y18); ctx.lineTo(w, y18); ctx.stroke(); ctx.setLineDash([]);
+    // the 18 mmHg cutoff is shown only in coached mode; in standard mode the learner has to know it
+    if (S.coached) { const y18 = h - 6 - 18 / 50 * (h - 12); ctx.strokeStyle = "rgba(238,60,54,.5)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, y18); ctx.lineTo(w, y18); ctx.stroke(); ctx.setLineDash([]); }
     ctx.strokeStyle = "#f2b134"; ctx.lineWidth = 2; ctx.beginPath(); let pen = false;
     const phase = tNow % CO2_WIN, sweepN = Math.floor(tNow / CO2_WIN);
     for (let x = 0; x <= w; x++) {
@@ -1642,9 +1698,9 @@ window.SCENARIO = {
       if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y);
     }
     ctx.stroke();
-    const shown = vent ? Math.round(et + Math.sin(r * 0.7) * 0.6) : "--";
+    const shown = vent && S.breathEt != null ? Math.round(S.breathEt) : "--";
     $("co2Val").textContent = shown;
-    $("co2Box").classList.toggle("low", vent && S.phase === "running" && et <= 18);
+    $("co2Box").classList.toggle("low", S.coached && vent && S.phase === "running" && et <= 18);
   }
 
   // ---------- debrief ----------
@@ -1682,7 +1738,8 @@ window.SCENARIO = {
     S = newState(coached);
     sceneBuilt = false; ecgM = null; ecgLastIdx = -1; co2LastIdx = -1; co2Real0 = null; ecgStamp.fill(-1); co2Stamp.fill(-1);
     $("screen-intro").classList.add("hidden"); $("screen-end").classList.add("hidden"); $("screen-game").classList.remove("hidden");
-    $("modeTag").textContent = coached ? "Coached mode" : "Standard mode";
+    window.scrollTo(0, 0);   // always start the case at the top of the page
+    document.querySelectorAll(".modetag").forEach(t => t.textContent = coached ? "Coached mode" : "Standard mode");
     $("roster").replaceChildren(); $("log").replaceChildren(); delete $("log").dataset.count;
     renderActions(); renderRoster(); renderHint();
     requestAnimationFrame(() => { sizeMonitor(); S.lastReal = realNow(); requestAnimationFrame(tick); });
@@ -1701,7 +1758,7 @@ window.SCENARIO = {
     $("startCoach").addEventListener("click", () => start(true));
     $("againStd").addEventListener("click", () => start(false));
     $("againCoach").addEventListener("click", () => start(true));
-    $("toIntro").addEventListener("click", () => { $("screen-end").classList.add("hidden"); $("screen-intro").classList.remove("hidden"); });
+    $("toIntro").addEventListener("click", () => { $("screen-end").classList.add("hidden"); $("screen-intro").classList.remove("hidden"); window.scrollTo(0, 0); });
     $("chartTop").addEventListener("click", () => openChart());
     let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (S && S.phase !== "ended") { sizeMonitor(); ecgStamp.fill(-1); ecgLastIdx = -1; } }, 150); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && dismissModal) dismissModal(); });
