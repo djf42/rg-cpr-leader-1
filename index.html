@@ -196,7 +196,7 @@ body::after{opacity:.16}
   .main{grid-template-columns:1fr;gap:0}
   .main > div{display:contents}
   .scene{order:1}.mon{order:2;margin-top:10px}.actions{order:3}.roster-note{order:4;margin-top:12px}.roster{order:5}.loghead{order:6}.log{order:7}
-  .actions .btn{font-size:15px;padding:10px 8px}
+  .actions .btn{font-size:15px;padding:7px 8px}
 }
 .scene{background:var(--ice);border-radius:var(--radius-md);overflow:hidden}
 .scene svg{display:block;width:100%;height:auto}
@@ -244,7 +244,7 @@ body::after{opacity:.16}
 .actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .actions .btn{width:100%;font-size:17px;padding:11px 16px}
 .arow{display:flex;gap:8px}
-.arow .btn{flex:1 1 0;min-width:0;padding:11px 8px}
+.arow .btn{flex:1 1 0;min-width:0;padding:7px 8px;font-size:16px}
 .btn.pulse{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(238,60,54,.55)}50%{box-shadow:0 0 0 8px rgba(238,60,54,0)}}
 .btn.shock{background:#b3261e}
@@ -847,7 +847,7 @@ window.SCENARIO = {
     { id: "priya", name: "Priya", shirt: "#f2b134" }
   ],
   hasIV: true,
-  poorTechniqueFirstCompressor: true,      // a built-in low-ETCO2 challenge
+  poorTechniqueFirstCompressor: true,      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
   peaSequence: ["pea94n", "pea38w", "pea60w"], // rhythm found at pause 1, 2, 3 (and after)
   roscAtPause: [3, 4],                     // chosen at random each play
   indicated: ["epinephrine", "vasopressin", "atropine"],
@@ -931,7 +931,7 @@ window.SCENARIO = {
   function qualityNow() {
     const c = compressor();
     if (!c || S.phase !== "running") return null;
-    let q = c.poorTech ? 15 : 22;
+    let q = S.poorQuality ? 15 : 22;     // poor compressions persist, whoever compresses, until coached
     const dur = S.sim - (c.compressStart || S.sim);
     if (dur > 130) q = Math.min(q, 16);
     return q;
@@ -954,7 +954,7 @@ window.SCENARIO = {
       const cur = compressor(); if (cur && cur !== m) { cur.task = null; log(cur.name + " handed over compressions."); }
       if (!(prev && prev.type === "compress")) m.compressStart = S.sim;
       m.task = { type, start: S.sim };
-      if (SC.poorTechniqueFirstCompressor && !S.firstCompressorAssigned) { m.poorTech = true; S.firstCompressorAssigned = true; }
+      if (SC.poorTechniqueFirstCompressor && !S.firstCompressorAssigned) { S.poorQuality = true; S.firstCompressorAssigned = true; }
       if (S.firstCompressionAt == null) { S.firstCompressionAt = S.sim; S.cycle = 1; S.cycleStart = S.sim; }
       say(m, "On compressions"); log(m.name + " started compressions.");
     } else if (type === "ventilate") {
@@ -1239,7 +1239,7 @@ window.SCENARIO = {
     if (S.intubated && !S.capno && !busy("capno")) return "Connect the capnograph to monitor compression quality.";
     if (!S.iv && !busy("checkiv") && !busy("placeiv")) return "This patient already has an IV catheter: have someone check it.";
     if (S.capno && etco2Now() <= 18) {
-      if (S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
+      if (!S.poorQuality && S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
       return "ETCO₂ is " + etco2Now() + " mmHg (18 or below): tap Troubleshoot compressions above " + c.name + ".";
     }
     const vaso = S.drugs.filter(d => SC.vasopressors.includes(d.key) && !d.beforeDx);
@@ -1263,7 +1263,7 @@ window.SCENARIO = {
     if (!m.task) return "Standing by";
     const t = m.task, base = { compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
     if (t.type === "compress") return base + " · " + fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "");
-    if (t.dur) return base + " · " + Math.min(99, Math.floor((S.sim - t.start) / t.dur * 100)) + "%";
+    if (t.dur) return base + " · " + Math.max(1, Math.ceil(t.dur - (S.sim - t.start))) + " s left";
     return base;
   }
   function renderRoster() {
@@ -1481,8 +1481,8 @@ window.SCENARIO = {
         const ok = opts.every((o, i) => o[1] === picked.has(i));
         list.querySelectorAll(".qopt").forEach((b, i) => { b.disabled = true; if (opts[i][1]) b.classList.add("right"); else if (picked.has(i)) b.classList.add("wrong"); });
         S.lowSince = null; S.lowPenalized = false;
-        if (ok) { c.poorTech = false; score("BLS", P.coachingCorrect, "Coaching question answered correctly: " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
-        else { score("BLS", 0, "Coaching question missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + "."); fb.textContent = "Not quite: the correct answer is highlighted. " + c.name + "'s technique hasn't changed. Try again or swap compressors."; fb.className = "qfb bad"; }
+        if (ok) { S.poorQuality = false; score("BLS", P.coachingCorrect, "Coaching question answered correctly: " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique, and the team keeps it up."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
+        else { score("BLS", 0, "Coaching question missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + "."); fb.textContent = "Not quite: the correct answer is highlighted. Compression quality hasn't changed. Troubleshoot again to try another question."; fb.className = "qfb bad"; }
         go.textContent = "Back to the case";
       });
       body.appendChild(go);
@@ -1748,7 +1748,7 @@ window.SCENARIO = {
 
   window.TeamLeader = {
     start, get state() { return S; },
-    _debug: { compressor, ventilator, etco2Now, etco2Target, rhythmKeyNow, startPause, resume, endCase }
+    _debug: { poor: () => S.poorQuality, compressor, ventilator, etco2Now, etco2Target, rhythmKeyNow, startPause, resume, endCase }
   };
 
   document.addEventListener("DOMContentLoaded", () => {
