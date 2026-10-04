@@ -1385,7 +1385,7 @@ window.SCENARIO = {
       b.querySelector(".mbar").style.visibility = t && t.dur ? "visible" : "hidden";
       b.querySelector(".mbar i").style.width = pct + "%";
       b.classList.toggle("busy", !!t);
-      b.disabled = S.phase === "pause";
+      b.disabled = false;
     });
   }
 
@@ -1414,11 +1414,11 @@ window.SCENARIO = {
     box.appendChild(head);
     // pulse check: only an assigned palpator reports
     const palp = S.team.find(m => m.task && m.task.type === "palpate");
-    const pl = el("p", "plabel", "Pulse check"); box.appendChild(pl);
+    if (palp || S.coached) box.appendChild(el("p", "plabel", "Pulse check"));
     if (palp) {
       const who = S.team.find(m => m.id === palp.id);
       box.appendChild(el("p", "pstat" + (p.pulseChecked ? " done" : ""), p.pulseChecked ? who.name + ": " + (p.rhythm === "rosc" ? "pulse present." : "no pulse.") : who.name + " is feeling for a pulse…"));
-    } else {
+    } else if (S.coached) {
       box.appendChild(el("p", "pstat warn", "Nobody is palpating a pulse. Who should?"));
       const g = el("div", "pgrid one-row");
       S.team.filter(m => m.id !== p.prevCompressor).forEach(m => {
@@ -1484,6 +1484,7 @@ window.SCENARIO = {
   function closeModal() { const m = $("modal"); if (m) m.remove(); dismissModal = null; }
 
   function openTaskMenu(id) {
+    if (S.phase === "pause") return openPauseMenu(id);
     if (S.phase !== "running") return;
     const m = S.team.find(x => x.id === id);
     modal(m.name + ": what should they do?", body => {
@@ -1515,6 +1516,20 @@ window.SCENARIO = {
       body.appendChild(list);
       if (m.task && m.task.type === "compress") body.appendChild(el("p", "warn small", "Giving " + m.name + " another task stops compressions."));
       if (m.task && m.task.type === "ventilate") body.appendChild(el("p", "warn small", "Giving " + m.name + " another task stops ventilation."));
+    });
+  }
+
+  function openPauseMenu(id) {
+    const m = S.team.find(x => x.id === id), p = S.pause;
+    modal(m.name + ": during the pause", body => {
+      body.appendChild(el("p", "muted small", "Currently: " + taskText(m)));
+      const list = el("div", "tlist");
+      const isComp = m.id === p.prevCompressor, palpating = m.task && m.task.type === "palpate";
+      const b = el("button", "titem"); b.type = "button"; b.disabled = isComp || palpating;
+      b.append(el("span", null, palpating ? "Already palpating the pulse" : "Palpate pulse"), el("small", null, isComp ? "on compressions" : "Femoral"));
+      b.addEventListener("click", () => { closeModal(); assign(m, "palpate"); renderActions(); });
+      list.appendChild(b); body.appendChild(list);
+      body.appendChild(el("p", "muted small", "Choose the rhythm and the next compressor in the pause panel."));
     });
   }
 
@@ -1878,13 +1893,13 @@ window.SCENARIO = {
   const ALG_W = 760, ALG_H = 884;
   // id: [x, y, w, h, title, subtitle]
   const BOX = {
-    noPauses:    [60, 58, 300, 40, "2 full minutes, no pauses", ""],
-    compress:    [60, 106, 300, 54, "1 · Chest compressions", "100–120 / minute"],
-    vent:        [60, 168, 300, 54, "2 · Ventilation", "every 6 seconds"],
-    ecg:         [400, 58, 300, 40, "3 · Monitoring: ECG", ""],
-    etco2:       [400, 104, 300, 40, "Monitoring: ETCO₂ 18+ mmHg", ""],
-    iv:          [400, 150, 300, 40, "4 · IV access", ""],
-    rev:         [400, 196, 300, 30, "5 · Reversals", ""],
+    noPauses:    [56, 58, 288, 40, "2 full minutes, no pauses", ""],
+    compress:    [56, 106, 288, 54, "1 · Chest compressions", "100–120 / minute"],
+    vent:        [56, 168, 288, 54, "2 · Ventilation", "every 6 seconds"],
+    ecg:         [422, 82, 134, 60, "ECG", "", "3 · Monitoring: ECG"],
+    etco2:       [564, 82, 134, 60, "ETCO₂", "18+ mmHg", "3 · Monitoring: ETCO₂ 18+ mmHg"],
+    iv:          [412, 160, 296, 34, "4 · IV access", ""],
+    rev:         [412, 200, 296, 28, "5 · Reversals", ""],
     pauseCheck:  [220, 286, 320, 44, "Pause & check", "< 10 seconds"],
     rhythmDx:    [220, 336, 156, 40, "Rhythm diagnosis", ""],
     pulse:       [384, 336, 156, 40, "Pulse palpation", ""],
@@ -2193,14 +2208,16 @@ window.SCENARIO = {
     o += '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="' + LINE + '"/></marker>' +
          '<marker id="ahOn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="' + NAVY + '"/></marker></defs>';
     // containers
-    o += '<rect x="40" y="22" width="340" height="212" rx="12" fill="#eaf6fc" stroke="#84d1f5" stroke-width="1.5"/>' +
-         '<rect x="380" y="22" width="340" height="212" rx="12" fill="#fdf0ef" stroke="#f3b3b0" stroke-width="1.5"/>' +
+    o += '<rect x="40" y="22" width="320" height="212" rx="12" fill="#eaf6fc" stroke="#84d1f5" stroke-width="1.5"/>' +
+         '<rect x="400" y="22" width="320" height="212" rx="12" fill="#fdf0ef" stroke="#f3b3b0" stroke-width="1.5"/>' +
+         '<rect x="412" y="54" width="296" height="98" rx="9" fill="#ffffff" stroke="#e6a4a0" stroke-width="1.5"/>' +
+         '<text x="424" y="73" font-family="Outfit, Arial, sans-serif" font-weight="700" font-size="14" fill="' + NAVY + '">3 · Monitoring</text>' +
          '<rect x="210" y="276" width="340" height="110" rx="12" fill="#fdf0ef" stroke="#f3b3b0" stroke-width="1.5"/>';
-    o += '<text x="210" y="45" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="800" font-size="16" fill="' + NAVY + '">Start BLS</text>' +
-         '<text x="550" y="45" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="800" font-size="16" fill="' + NAVY + '">Start ALS</text>';
+    o += '<text x="200" y="45" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="800" font-size="16" fill="' + NAVY + '">Start BLS</text>' +
+         '<text x="560" y="45" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="800" font-size="16" fill="' + NAVY + '">Start ALS</text>';
     // connectors (path taken drawn dark and thick)
     const E = [
-      ["M380 234 V 274", path.top], ["M380 386 V 434", path.rosc], ["M380 386 V 410 H 155 V 434", path.shock], ["M380 386 V 410 H 605 V 434", path.non],
+      ["M200 234 V 254 H 380 V 274", path.top], ["M380 386 V 434", path.rosc], ["M380 386 V 410 H 155 V 434", path.shock], ["M380 386 V 410 H 605 V 434", path.non],
       ["M155 494 V 524", path.shock], ["M155 578 V 602", path.shock], ["M155 648 V 674", path.refractory], ["M380 494 V 524", path.rosc], ["M605 494 V 524", path.non],
       ["M40 626 H 20 V 128 H 38", path.shock], ["M720 465 H 742 V 128 H 722", path.non]
     ];
@@ -2209,7 +2226,7 @@ window.SCENARIO = {
     Object.entries(BOX).forEach(([id, [x, y, w, h, title, sub]]) => {
       const s = st[id] || { state: "na" }, k = STATE_LOOK[s.state];
       const muted = s.state === "na";
-      o += '<g class="abox" data-box="' + id + '" tabindex="0" role="button" aria-label="' + esc(title + ": " + k.label) + '">';
+      o += '<g class="abox" data-box="' + id + '" tabindex="0" role="button" aria-label="' + esc((BOX[id][6] || title) + ": " + k.label) + '">';
       o += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="8" fill="' + k.fill + '" stroke="' + k.stroke + '" stroke-width="' + (muted ? 1.5 : 2.5) + '"' + (k.dash ? ' stroke-dasharray="' + k.dash + '"' : "") + '/>';
       const ty = sub ? y + h / 2 - 3 : y + h / 2 + 5;
       o += '<text x="' + (x + 12) + '" y="' + ty + '" font-family="Outfit, Arial, sans-serif" font-weight="700" font-size="14" fill="' + (muted ? "#9aa6af" : NAVY) + '">' + esc(title) + '</text>';
@@ -2228,7 +2245,7 @@ window.SCENARIO = {
   function algoDetailHTML(id) {
     if (!id) return '<p class="muted">Tap any box on the algorithm to see what happened in this case.</p>';
     const b = BOX[id], s = ALGO.st[id] || { state: "na", lines: [] }, k = STATE_LOOK[s.state];
-    return '<div class="adhead"><b>' + esc(b[4]) + (b[5] ? ' <span class="adsub">' + esc(b[5]) + '</span>' : '') + '</b><span class="adpill" style="background:' + k.stroke + '">' + esc(k.label) + '</span></div>' +
+    return '<div class="adhead"><b>' + esc(b[6] || b[4]) + (b[5] && !b[6] ? ' <span class="adsub">' + esc(b[5]) + '</span>' : '') + '</b><span class="adpill" style="background:' + k.stroke + '">' + esc(k.label) + '</span></div>' +
       (s.lines.length ? '<ul>' + s.lines.map(l => '<li>' + esc(l) + '</li>').join("") + '</ul>' : '');
   }
   function selectBox(id) {
