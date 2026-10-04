@@ -254,6 +254,9 @@ body::after{opacity:.16}
 .pcount{font-family:var(--display);font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
 .pcount.over{color:#ffe08a}
 .plabel{font-weight:700;margin:12px 0 6px}
+.pstat{margin:0 0 4px;font-size:15px;color:var(--ink-muted)}
+.pstat.done{color:var(--navy);font-weight:700}
+.pstat.warn{color:var(--red-deep);font-weight:700}
 .pgrid{display:flex;flex-wrap:wrap;gap:6px}
 .pgrid.one-row{flex-wrap:nowrap}
 .pgrid.one-row .chip{flex:1 1 0;min-width:0;justify-content:center;padding:8px 4px;font-size:15px;white-space:nowrap}
@@ -826,7 +829,11 @@ window.POINTS = {
   shockNonShockable: -200,      // and ROSC becomes impossible
   unattendedPerSecond: -20,     // nobody on compressions during a cycle
   unattendedCap: -300,
-  rosc: 100
+  rosc: 100,
+  pulseReady: 50,               // someone already palpating when the pause starts
+  pulseDuringPause: 25,         // palpator only got in position during the pause
+  noPulseCheck: -50,            // no pulse check at a pause
+  earlyRoscCheck: 50            // paused early after a sudden ETCO2 rise (ROSC)
 };
 
 // ---- Timing (case-clock seconds unless noted) ----
@@ -917,7 +924,7 @@ window.SCENARIO = {
   const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 
   // ---------- scene geometry (SVG units) ----------
-  const STATION_X = { chest: 466, head: 372, drug: 177, monitor: 709, defib: 772 };
+  const STATION_X = { chest: 466, head: 372, pulse: 598, drug: 177, monitor: 709, defib: 772 };
   const IDLE_X = [-66, -2, 62, 126];   // waiting area at the left (scene starts at x = -100)
   const TASKS = {
     compress: { label: "Start compressions", station: "chest", continuous: true },
@@ -928,7 +935,8 @@ window.SCENARIO = {
     checkiv: { label: "Check the IV catheter", station: "drug" },
     placeiv: { label: "Place a new IV catheter", station: "drug" },
     drug: { label: "Give a drug", station: "drug" },
-    charge: { label: "Charge the defibrillator", station: "defib" }
+    charge: { label: "Charge the defibrillator", station: "defib" },
+    palpate: { label: "Palpate pulse", station: "pulse", continuous: true }
   };
   const RHYTHM_CHOICES = [["asys", "Asystole"], ["pea", "PEA"], ["vf", "VF"], ["pvt", "Pulseless VT", "PVT"], ["rosc", "ROSC"]];
 
@@ -946,7 +954,7 @@ window.SCENARIO = {
       unattended: 0,
       lowSince: null, lowPenalized: false, coachingAsked: [],
       roscAtPause: SC.roscAtPause[Math.floor(Math.random() * SC.roscAtPause.length)],
-      roscBlocked: false,
+      roscBlocked: false, roscAtSec: 40 + Math.random() * 50, roscOnsetSim: null,
       pauses: [], pause: null, shocks: [], drugs: [],
       events: [], log: [],
       lastQuality: 0, etco2Shown: null,
@@ -972,7 +980,7 @@ window.SCENARIO = {
     // the underlying rhythm during cycle k (what the next pause will find), with ROSC appearing midway
     const k = Math.max(1, S.cycle);
     if (S.pause) return S.pause.rhythm;
-    if (k === S.roscAtPause && !S.roscBlocked && S.lastQuality >= 18 && cycleTime() > 60) return "rosc";
+    if (k === S.roscAtPause && !S.roscBlocked && S.lastQuality >= 18 && cycleTime() > S.roscAtSec) return "rosc";
     return peaFor(k);
   }
   const rhythm = () => L.byKey(rhythmKeyNow());
@@ -1013,6 +1021,10 @@ window.SCENARIO = {
       m.task = { type, start: S.sim };
       if (S.ventStartAt == null) S.ventStartAt = S.sim;
       say(m, "Ventilating"); log(m.name + " is ventilating every 6 seconds.");
+    } else if (type === "palpate") {
+      m.task = { type, start: S.sim };
+      m.pulseReportAt = realNow() + 2.5;            // a moment to get a hand on the femoral artery
+      say(m, "Feeling for a pulse"); log(m.name + " is palpating the femoral pulse.");
     } else if (type === "idle") {
       m.task = null; say(m, "Standing by"); log(m.name + " is standing by.");
     } else {
@@ -1085,6 +1097,30 @@ window.SCENARIO = {
       cc.tiredFrom = cc.compressStart; say(cc, "I'm getting tired", 3.5); log(cc.name + ": getting tired (compressing for over 2 minutes).");
     }
 
+    // palpator reports
+    S.team.forEach(m => {
+      if (!(m.task && m.task.type === "palpate" && m.pulseReportAt && r >= m.pulseReportAt)) return;
+      m.pulseReportAt = null;
+      if (S.phase === "pause") {
+        const feel = S.pause.rhythm === "rosc";
+        S.pause.pulseChecked = true; S.pause.pulseBy = m.id; S.pause.checker = m.id;
+        say(m, feel ? "I feel a pulse!" : "I don't feel a pulse", 1e6);   // stays up until the pause ends
+        log(m.name + ": " + (feel ? "pulse present." : "no pulse."));
+        renderActions();
+      } else {
+        const comp2 = compressingActive();
+        const feel = comp2 ? Math.random() < 0.5 : rhythmKeyNow() === "rosc";
+        say(m, feel ? "I feel a pulse" : "I don't feel a pulse", 3.5);
+        log(m.name + (comp2 ? " (during compressions): " : ": ") + (feel ? "feels a pulse." : "doesn't feel a pulse."));
+      }
+    });
+
+    // ROSC during a cycle: ETCO2 jumps; a palpator already in place re-checks
+    if (S.phase === "running" && S.roscOnsetSim == null && rhythmKeyNow() === "rosc") {
+      S.roscOnsetSim = S.sim;
+      S.team.forEach(m => { if (m.task && m.task.type === "palpate") m.pulseReportAt = realNow() + 3; });
+    }
+
     // two-minute call
     if (S.phase === "running" && S.cycleStart != null && !S.twoMinCalled && cycleTime() >= T.cycle) {
       S.twoMinCalled = true; const c = compressor(); if (c) say(c, "Two minutes!", 3.5); log("Two minutes.");
@@ -1125,25 +1161,20 @@ window.SCENARIO = {
     const k = S.cycle;
     let rk = peaFor(k);
     if (k === S.roscAtPause) {
-      if (!S.roscBlocked && S.lastQuality >= 18) rk = "rosc";
-      else S.roscAtPause = k + 1;   // inadequate compressions (or a wrong shock) delay ROSC
+      if (!S.roscBlocked && S.lastQuality >= 18 && cycleTime() >= S.roscAtSec) rk = "rosc";
+      else S.roscAtPause = k + 1;   // ROSC hadn't happened yet (paused early, poor compressions, or a wrong shock)
     }
     const prev = compressor();
-    S.pause = { k, rhythm: rk, real0: realNow(), simAt: S.sim, cycleLen: cycleTime(), prevCompressor: prev ? prev.id : null, dx: null, next: null, pulseSaid: false, shocked: false };
+    const palp = S.team.find(m => m.task && m.task.type === "palpate");
+    S.pause = { k, rhythm: rk, real0: realNow(), simAt: S.sim, cycleLen: cycleTime(), prevCompressor: prev ? prev.id : null, dx: null, next: null, shocked: false,
+                pulseReady: !!palp, pulseChecked: false, pulseBy: null, afterRoscRise: S.roscOnsetSim != null && rk === "rosc" };
+    if (palp) palp.pulseReportAt = realNow() + 1.2;
     S.phase = "pause"; S.ffTarget = null; S.rate = 1; S.stopReal = realNow();
     log("Pause and check after cycle " + k + " (" + Math.round(S.pause.cycleLen) + " s of compressions).", "pause");
     renderActions();
   }
   function updatePause(r) {
     const p = S.pause, el2 = r - p.real0;
-    if (!p.pulseSaid && el2 > 1.4) {
-      p.pulseSaid = true;
-      const checker = S.team.find(m => !m.task) || S.team.find(m => m.task && m.task.type !== "compress" && m.task.type !== "ventilate") || S.team.find(m => m.id !== p.prevCompressor) || S.team[0];
-      // the pulse report stays up until the pause ends
-      p.checker = checker.id;
-      say(checker, p.rhythm === "rosc" ? "I feel a pulse!" : "I don't feel a pulse", 1e6);
-      log(checker.name + ": " + (p.rhythm === "rosc" ? "pulse present." : "no pulse."));
-    }
     const left = T.pauseBudget - el2;
     const c = $("pcount");
     if (c) { c.textContent = left >= 0 ? Math.ceil(left) + " s" : "+" + Math.floor(-left) + " s"; c.classList.toggle("over", left < 0); }
@@ -1167,6 +1198,11 @@ window.SCENARIO = {
     p.dur = dur; p.endAt = S.sim; S.pauses.push(p);
     const nextM = S.team.find(m => m.id === p.next);
     log("Rhythm called: " + labelOf(p.dx) + " (pause " + p.k + ", " + dur.toFixed(1) + " s hands-off)" + (p.dx !== "rosc" && nextM ? ". " + nextM.name + (nextM.id === p.prevCompressor ? " continues compressions." : " takes over compressions.") : "."), "dx");
+    // pulse check scoring
+    if (p.pulseChecked && p.pulseReady) score("Rhythm & pauses", P.pulseReady, "Pause " + p.k + ": " + (S.team.find(m => m.id === p.pulseBy) || {}).name + " was already palpating, so the pulse was checked right away.");
+    else if (p.pulseChecked) score("Rhythm & pauses", P.pulseDuringPause, "Pause " + p.k + ": pulse checked, but the palpator only got in position during the pause. Have someone palpate before you pause.");
+    else score("Rhythm & pauses", P.noPulseCheck, "Pause " + p.k + ": nobody checked the pulse. Every pause and check needs a pulse check.");
+    if (actual === "rosc" && p.afterRoscRise && p.cycleLen < T.cycle - T.fastForwardStopsBefore - 2) score("Rhythm & pauses", P.earlyRoscCheck, "Pause " + p.k + ": paused early after the sudden ETCO₂ rise, a sign of ROSC.");
     // ROSC outcomes end the case
     if (actual === "rosc") {
       if (p.dx === "rosc") { score("Rhythm & pauses", P.rosc, "ROSC recognized at pause " + p.k + "."); scorePauseTime(p); log("ROSC recognized."); return endCase("rosc"); }
@@ -1283,7 +1319,9 @@ window.SCENARIO = {
   }
   function hintText() {
     if (S.phase === "pause") {
-      if (!S.pause.dx) return "Name the rhythm: read the ECG and listen for the pulse report.";
+      if (!S.team.some(m => m.task && m.task.type === "palpate")) return "Nobody is feeling for a pulse. Pick someone to palpate it now.";
+      if (!S.pause.pulseChecked) return "Wait for the pulse report while you read the ECG.";
+      if (!S.pause.dx) return "Name the rhythm: read the ECG and use the pulse report.";
       if (S.pause.dx === "rosc") return "If there's a pulse, confirm ROSC.";
       if (!S.pause.next) return "Pick who takes over compressions: a fresh teammate.";
       return "Resume compressions now. Every second counts.";
@@ -1306,6 +1344,10 @@ window.SCENARIO = {
       if (lastVaso === S.cycle - 1) return "A vasopressor was given last cycle. Skip it this cycle: every other cycle.";
       if (lastVaso !== S.cycle) return "Non-shockable rhythm and IV access: a vasopressor is due this cycle. Check the dosing chart for the dose.";
     }
+    if (S.roscOnsetSim != null && S.ffTarget != null) return "ETCO₂ just rose sharply, a possible sign of ROSC. Tap Normal speed.";
+    if (S.roscOnsetSim != null && !S.team.some(m => m.task && m.task.type === "palpate")) return "ETCO₂ rose sharply: possible ROSC. Have someone palpate a pulse, then pause and check.";
+    if (S.roscOnsetSim != null) return "ETCO₂ rose sharply: possible ROSC. Pause and check now.";
+    if (cycleTime() >= T.cycle - 20 && !S.team.some(m => m.task && m.task.type === "palpate")) return "The cycle is ending soon: get someone in position to palpate the pulse before you pause.";
     if (cycleTime() >= T.cycle - T.fastForwardStopsBefore) return "Two minutes: pause and check the rhythm and pulse.";
     if (S.pauses.length === 0 && S.drugs.some(d => d.beforeDx)) return "Diagnose the rhythm before giving drugs.";
     return "Everything's running. Tap Finish cycle to skip ahead to the end of the cycle.";
@@ -1318,7 +1360,7 @@ window.SCENARIO = {
   // ---------- rendering: roster ----------
   function taskText(m) {
     if (!m.task) return "Standing by";
-    const t = m.task, base = { compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
+    const t = m.task, base = { palpate: "Palpating pulse", compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
     if (t.type === "compress") return base + " · " + fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "");
     if (t.dur) return base + " · " + Math.max(1, Math.ceil(t.dur - (S.sim - t.start))) + " s left";
     return base;
@@ -1353,8 +1395,14 @@ window.SCENARIO = {
     box.replaceChildren();
     if (S.phase === "pause") return renderPausePanel(box);
     const ct = cycleTime();
-    const ff = el("button", "btn ghost", "Finish cycle"); ff.disabled = !(S.cycleStart != null && ct < T.cycle - T.fastForwardStopsBefore - 1 && S.ffTarget == null);
-    ff.addEventListener("click", () => { S.ffTarget = S.cycleStart + T.cycle - T.fastForwardStopsBefore; S.ffRealLeft = T.fastForwardRealSeconds; renderActions(); });
+    let ff;
+    if (S.ffTarget != null) {
+      ff = el("button", "btn ghost", "Normal speed");
+      ff.addEventListener("click", () => { S.ffTarget = null; S.rate = 1; log("Back to normal speed."); renderActions(); });
+    } else {
+      ff = el("button", "btn ghost", "Finish cycle"); ff.disabled = !(S.cycleStart != null && ct < T.cycle - T.fastForwardStopsBefore - 1);
+      ff.addEventListener("click", () => { S.ffTarget = S.cycleStart + T.cycle - T.fastForwardStopsBefore; S.ffRealLeft = T.fastForwardRealSeconds; renderActions(); });
+    }
     const pause = el("button", "btn", "Pause and check"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
     pause.addEventListener("click", startPause);
     const row = el("div", "arow"); row.append(pause, ff);
@@ -1364,6 +1412,23 @@ window.SCENARIO = {
     const p = S.pause;
     const head = el("div", "phead"); head.append(el("b", null, "Pause and check"), el("span", "pcount", "10 s")); head.lastChild.id = "pcount";
     box.appendChild(head);
+    // pulse check: only an assigned palpator reports
+    const palp = S.team.find(m => m.task && m.task.type === "palpate");
+    const pl = el("p", "plabel", "Pulse check"); box.appendChild(pl);
+    if (palp) {
+      const who = S.team.find(m => m.id === palp.id);
+      box.appendChild(el("p", "pstat" + (p.pulseChecked ? " done" : ""), p.pulseChecked ? who.name + ": " + (p.rhythm === "rosc" ? "pulse present." : "no pulse.") : who.name + " is feeling for a pulse…"));
+    } else {
+      box.appendChild(el("p", "pstat warn", "Nobody is palpating a pulse. Who should?"));
+      const g = el("div", "pgrid one-row");
+      S.team.filter(m => m.id !== p.prevCompressor).forEach(m => {
+        const b = el("button", "chip"); b.type = "button";
+        const d = el("span", "dot"); d.style.background = m.shirt; b.append(d, document.createTextNode(m.name));
+        b.addEventListener("click", () => { assign(m, "palpate"); renderActions(); });
+        g.appendChild(b);
+      });
+      box.appendChild(g);
+    }
     box.appendChild(el("p", "plabel", "1. Rhythm diagnosis"));
     const rg = el("div", "pgrid one-row");
     RHYTHM_CHOICES.forEach(([k, lab, short]) => {
@@ -1432,6 +1497,7 @@ window.SCENARIO = {
       if (!S.capno) opts.push(["capno", "Connect capnograph", S.intubated ? T.tasks.capno + " s" : "needs intubation", S.intubated]);
       if (!S.iv) { if (SC.hasIV) opts.push(["checkiv", "Check the IV catheter", T.tasks.checkiv + " s", true]); opts.push(["placeiv", "Place a new IV catheter", T.tasks.placeiv + " s", true]); }
       opts.push(["drug", "Give a drug…", S.iv ? T.tasks.drug + " s" : "needs IV access", S.iv]);
+      opts.push(["palpate", m.task && m.task.type === "palpate" ? "Check the pulse again" : "Palpate pulse", "Femoral", !(m.task && m.task.type === "compress")]);
       opts.push(["charge", "Charge the defibrillator…", T.tasks.charge + " s", true]);
       opts.push(["idle", "Stand by", "", true]);
       const list = el("div", "tlist");
@@ -1619,6 +1685,7 @@ window.SCENARIO = {
     if (pose === "chest") return '<path ' + a + ' d="M-13 82 L -5 154 M 9 82 L 5 154"/><rect x="-13" y="152" width="26" height="12" rx="6" fill="#022033"/>';
     if (pose === "ventilate") return '<path ' + a + ' d="M-13 84 L -30 168 M 12 84 L 18 150"/><g class="bag"><ellipse cx="-36" cy="176" rx="11" ry="7" fill="#84d1f5" stroke="#022033" stroke-width="2"/></g>';
     if (pose === "intubate") return '<path ' + a + ' d="M-13 84 L -32 172 M 12 84 L -16 174"/>';
+    if (pose === "palpate") return '<path ' + a + ' d="M-13 84 L -50 180 M 12 84 L 20 150"/><circle cx="-52" cy="184" r="7" fill="#022033"/>';
     if (pose === "cart") return '<path ' + a + ' d="M-12 84 L -22 196 M 12 84 L 22 196"/>';
     return '<path ' + a + ' d="M-27 82 L -27 150 M 27 82 L 27 150"/>';   // arms hanging straight down
   }
@@ -1630,7 +1697,7 @@ window.SCENARIO = {
       const x = st ? STATION_X[st] : IDLE_X[idleList.indexOf(m)];
       const tf = "translate(" + x + "px, 0px)";
       ["fb-", "ff-", "bb-"].forEach(p => { const g = $(p + m.id); if (g.style.transform !== tf) g.style.transform = tf; });
-      const pose = !m.task ? "idle" : m.task.type === "compress" ? "chest" : m.task.type === "ventilate" ? "ventilate" : m.task.type === "intubate" ? "intubate" : "cart";
+      const pose = !m.task ? "idle" : m.task.type === "compress" ? "chest" : m.task.type === "ventilate" ? "ventilate" : m.task.type === "intubate" ? "intubate" : m.task.type === "palpate" ? "palpate" : "cart";
       const arms = $("ff-" + m.id).firstChild;
       if (arms.dataset.pose !== pose) { arms.dataset.pose = pose; arms.innerHTML = armsFor(pose); }
       const pushing = pose === "chest" && S.phase === "running";
@@ -1862,7 +1929,7 @@ window.SCENARIO = {
     set("compress", t0 == null ? "missed" : (t0 <= 10 && rotated === rotTotal) ? "good" : (t0 <= 30 ? "partial" : "missed"), cl);
     if (S.ventStartAt == null) set("vent", "missed", ["Ventilation was never started (intubate first, then ventilate every 6 s)."]);
     else set("vent", S.ventStartAt <= cycle1End ? "good" : "partial", ["Intubated and ventilating from " + mmss(S.ventStartAt) + (S.ventStartAt <= cycle1End ? ", in the first cycle." : ", after the first cycle.")]);
-    const shortCycles = pauses.filter(p => p.cycleLen < T.cycle - T.fastForwardStopsBefore - 5);
+    const shortCycles = pauses.filter(p => p.cycleLen < T.cycle - T.fastForwardStopsBefore - 5 && !p.afterRoscRise);
     const npl = [];
     if (S.unattended > 1) npl.push("Nobody was on compressions for " + Math.round(S.unattended) + " s during cycles.");
     shortCycles.forEach(p => npl.push("Cycle " + p.k + " was cut short at " + Math.round(p.cycleLen) + " s."));
@@ -1901,7 +1968,9 @@ window.SCENARIO = {
       const right = pauses.filter(p => p.dx === catOf(p));
       set("rhythmDx", right.length === pauses.length ? "good" : right.length ? "partial" : "missed",
         pauses.map(p => "Pause " + p.k + ": called " + CAT_LABEL[p.dx] + (p.dx === catOf(p) ? ", correct." : "; it was " + CAT_LABEL[catOf(p)] + ".")));
-      set("pulse", "good", ["A teammate palpated a pulse at every pause and reported it."]);
+      const pl = pauses.map(p => "Pause " + p.k + ": " + (p.pulseChecked ? (S.team.find(m => m.id === p.pulseBy) || {}).name + (p.pulseReady ? " was palpating before the pause." : " got in position during the pause.") : "no pulse check."));
+      const none = pauses.filter(p => !p.pulseChecked).length, late = pauses.filter(p => p.pulseChecked && !p.pulseReady).length;
+      set("pulse", none ? "missed" : late ? "partial" : "good", pl);
     }
 
     // ---- branches ----
@@ -2021,7 +2090,7 @@ window.SCENARIO = {
       else set("vent", inThis(S.ventStartAt) ? "good" : "partial", ["Intubated and ventilating from " + mmss(S.ventStartAt) + "."]);
     } else if (S.ventStartAt != null) set("vent", cy.noVent > 5 ? "partial" : "good", [cy.noVent > 5 ? "Nobody was ventilating for " + Math.round(cy.noVent) + " s this cycle." : "Ventilation continued every 6 s."]);
     else set("vent", "missed", ["Ventilation still hadn't started."]);
-    const cutShort = pz && pz.cycleLen < T.cycle - T.fastForwardStopsBefore - 5;
+    const cutShort = pz && pz.cycleLen < T.cycle - T.fastForwardStopsBefore - 5 && !pz.afterRoscRise;
     const npl = [];
     if (cy.unatt > 1) npl.push("Nobody was on compressions for " + Math.round(cy.unatt) + " s.");
     if (cutShort) npl.push("The cycle was cut short at " + Math.round(pz.cycleLen) + " s.");
@@ -2059,7 +2128,9 @@ window.SCENARIO = {
       const cat = catOf(pz);
       set("pauseCheck", pz.dur <= T.pauseBudget ? "good" : "partial", ["Pause " + pz.k + " took " + pz.dur.toFixed(1) + " s" + (pz.dur > T.pauseBudget ? ", over the 10-second limit." : ".")]);
       set("rhythmDx", pz.dx === cat ? "good" : "missed", ["Called " + CAT_LABEL[pz.dx] + (pz.dx === cat ? ", correct." : "; it was " + CAT_LABEL[cat] + ".")]);
-      set("pulse", "good", [cat === "rosc" ? "A teammate felt a pulse." : "A teammate reported no pulse."]);
+      const pzBy = (S.team.find(m => m.id === pz.pulseBy) || {}).name;
+      if (!pz.pulseChecked) set("pulse", "missed", ["Nobody checked the pulse during this pause."]);
+      else set("pulse", pz.pulseReady ? "good" : "partial", [pzBy + (pz.pulseReady ? " was palpating before the pause" : " only got in position during the pause") + " and " + (cat === "rosc" ? "felt a pulse." : "felt no pulse.")]);
       if (cat === "rosc") {
         set("roscHdr", pz.dx === "rosc" ? "good" : "missed", [pz.dx === "rosc" ? "ROSC recognized." : "A pulse was reported, but it was called " + CAT_LABEL[pz.dx] + "."]);
         set("pca", "good", ["The case ends here. Next would come the post-cardiac arrest (PCA) algorithm."]);
