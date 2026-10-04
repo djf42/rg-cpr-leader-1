@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CPR Team Leader Challenge (prototype)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23ee3c36%27 stroke-width=%272.4%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M2 12h5l2-5 4 10 2-5h7%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* RECOVER design system: navy anchor, RECOVER red accent, sky secondary, ice/mist relief */
+:root{
+  --navy:#022033; --red:#ee3c36; --red-deep:#c92b26; --sky:#84d1f5; --ice:#d9f8ff; --mist:#e6e6e6; --white:#ffffff;
+  --ink:#022033; --ink-muted:rgba(2,32,51,.70); --on-navy-muted:rgba(255,255,255,.70);
+  --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-pill:9999px;
+  --shadow:0 10px 30px -12px rgba(2,32,51,.45);
+  --display:"Outfit","Arial Black",Arial,sans-serif;
+  --body:"Source Sans 3","Source Sans Pro",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0;min-height:100%;color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.6;
+  background:var(--navy);position:relative;overflow-x:hidden;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+/* low-opacity brand discs bleeding off the edges */
+body::before,body::after{content:"";position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+body::before{width:720px;height:720px;right:-260px;top:-300px;background:var(--sky);opacity:.10}
+body::after{width:520px;height:520px;left:-240px;bottom:-240px;background:var(--red);opacity:.12}
+.wrap{position:relative;z-index:1;max-width:740px;margin:0 auto;padding:22px 18px 56px}
+.brandbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 2px 18px}
+.brandbar img{height:52px;width:auto;display:block}
+.brandbar span{color:var(--on-navy-muted);font-size:15px;font-weight:600}
+@media (max-width:520px){.brandbar img{height:42px}.brandbar span{display:none}}
+.sheet{background:var(--white);border:1px solid var(--mist);border-radius:var(--radius-lg);padding:30px 28px;box-shadow:var(--shadow)}
+@media (max-width:520px){.sheet{padding:22px 18px}}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);line-height:1.02;letter-spacing:-.02em;margin:0 0 14px;color:var(--navy)}
+h2{font-family:var(--display);font-weight:800;font-size:32px;line-height:1.1;letter-spacing:-.01em;margin:0 0 10px}
+h3{font-family:var(--display);font-size:20px;font-weight:700;margin:0 0 8px;color:var(--navy)}
+.eyebrow{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);margin:0 0 8px}
+p{margin:0 0 12px}
+.muted{color:var(--ink-muted)}
+.small{font-size:15px}
+button,input,select{font:inherit;color:inherit}
+.btn{
+  appearance:none;border:0;border-radius:var(--radius-md);padding:13px 24px;font-family:var(--body);font-weight:700;font-size:19px;cursor:pointer;
+  background:var(--red);color:var(--white);transition:background .15s;
+}
+.btn:hover{background:var(--red-deep)}
+.btn:disabled{background:var(--mist);color:var(--ink-muted);cursor:not-allowed}
+.btn.ghost{background:var(--white);color:var(--navy);border:2px solid var(--navy)}
+.btn.ghost:hover{background:var(--ice)}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+label.field{display:block;margin:0 0 14px}
+label.field span{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
+input[type=text],select{width:100%;padding:12px 14px;border:1.5px solid #c9cfd4;border-radius:var(--radius-sm);background:var(--white);font-size:17px}
+input[type=text]:focus,select:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px var(--ice)}
+.hidden{display:none!important}
+
+/* ---- rhythm strip: navy monitor with sky grid ---- */
+.strip{position:relative;height:104px;margin:0 -28px 24px;background-color:var(--navy);
+  background-image:linear-gradient(rgba(132,209,245,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(132,209,245,.22) 1px,transparent 1px),linear-gradient(rgba(132,209,245,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(132,209,245,.08) 1px,transparent 1px);
+  background-size:40px 40px,40px 40px,8px 8px,8px 8px}
+@media (max-width:520px){.strip{margin:0 -18px 20px}}
+.strip canvas{position:absolute;inset:0;width:100%;height:100%}
+.strip .clock{position:absolute;right:14px;top:8px;font-family:var(--display);font-weight:800;font-size:24px;font-variant-numeric:tabular-nums;color:var(--white)}
+.strip .clock.late{color:var(--red)}
+.sheet > .strip:first-child{margin-top:-31px;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+@media (max-width:520px){.sheet > .strip:first-child{margin-top:-23px}}
+
+/* ---- question ---- */
+.qhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.qhead .eyebrow{margin:0}
+.progress{height:6px;background:var(--mist);border-radius:var(--radius-pill);overflow:hidden;margin-bottom:20px}
+.progress > i{display:block;height:100%;background:var(--navy);width:0}
+.stem{font-family:var(--display);font-weight:700;font-size:clamp(22px,4.4vw,28px);line-height:1.22;letter-spacing:-.01em;margin:0 0 8px}
+.hint{font-size:16px;color:var(--ink-muted);margin:0 0 16px}
+.opts{display:grid;gap:10px;margin:20px 0 0}
+.opts.tf{grid-template-columns:1fr 1fr}
+.opt{
+  display:flex;align-items:center;gap:12px;text-align:left;width:100%;padding:15px 16px;border-radius:var(--radius-md);
+  border:2px solid var(--mist);background:var(--white);cursor:pointer;font-size:18px;font-weight:600;min-height:60px;
+}
+.opts.tf .opt{justify-content:center;font-family:var(--display);font-size:24px;font-weight:800;min-height:78px}
+.opt:hover:not(:disabled){border-color:var(--navy);background:var(--ice)}
+.opt .box{flex:0 0 24px;height:24px;border:2px solid var(--navy);border-radius:var(--radius-sm);display:grid;place-items:center;font-size:15px}
+.opt.sel{border-color:var(--navy);background:var(--ice)}
+.opt.sel .box{background:var(--navy);color:var(--white)}
+.opt:disabled{cursor:default}
+.opt.is-correct{border-color:var(--navy);background:var(--ice)}
+.opt.is-wrong{border-color:var(--red);background:#fdeceb}
+.opt .tag{margin-left:auto;font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:var(--radius-pill)}
+.opt.is-correct .tag{background:var(--navy);color:var(--white)}
+.opt.is-wrong .tag{background:var(--red);color:var(--white)}
+.submit-row{margin-top:18px}
+
+/* ---- reveal ---- */
+.verdict{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-radius:var(--radius-md);margin:22px 0 18px;color:var(--white);font-family:var(--display)}
+.verdict.good{background:var(--navy)}
+.verdict.bad{background:var(--red)}
+.verdict b{font-size:26px;font-weight:800}
+.verdict .pts{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.verdict.good .pts{color:var(--sky)}
+.why p{font-size:18px;line-height:1.6}
+.takeaway{background:var(--ice);border-radius:var(--radius-md);padding:14px 18px;margin:16px 0 4px;font-weight:700;color:var(--navy)}
+.think{font-size:16px;color:var(--ink-muted);margin-top:10px}
+.think li{margin-bottom:4px}
+.next-row{margin-top:24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.running{font-size:15px;color:var(--ink-muted)}
+.running b{color:var(--ink);font-variant-numeric:tabular-nums;font-size:17px}
+
+/* ---- leaderboard ---- */
+.board{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:16px}
+.board th{text-align:left;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:700;padding:8px;border-bottom:2px solid var(--navy)}
+.board td{padding:10px 8px;border-bottom:1px solid var(--mist)}
+.board td.rank{width:40px;font-family:var(--display);font-weight:800;font-size:18px;color:var(--navy)}
+.board tr:nth-child(-n+3) td.rank{color:var(--red);font-size:22px}
+.board td.num,.board th.num{text-align:right}
+.board tr.me td{background:var(--ice)}
+.board .role{color:var(--ink-muted);font-size:14px}
+.board-wrap{overflow-x:auto}
+.empty{padding:16px 0;color:var(--ink-muted)}
+.bigscore{font-family:var(--display);font-weight:800;font-size:76px;line-height:1;letter-spacing:-.03em;margin:6px 0 2px;font-variant-numeric:tabular-nums;color:var(--red)}
+.stats{display:flex;gap:30px;flex-wrap:wrap;margin:14px 0 20px}
+.stats div{font-size:15px;color:var(--ink-muted)}
+.stats b{display:block;font-family:var(--display);font-weight:800;font-size:26px;color:var(--navy)}
+.notice{font-size:16px;background:var(--ice);border-radius:var(--radius-md);padding:12px 14px;margin:0 0 18px;color:var(--navy)}
+.review{margin-top:8px}
+.review details{border-bottom:1px solid var(--mist);padding:10px 0}
+.review summary{cursor:pointer;display:flex;gap:10px;align-items:baseline}
+.review summary .mark{font-weight:700;width:18px;flex:0 0 18px}
+.review .ok{color:var(--navy)} .review .no{color:var(--red)}
+.review .body{padding:8px 0 4px 28px;font-size:16px}
+footer{position:relative;z-index:1;margin-top:24px;text-align:center;font-size:15px;color:var(--on-navy-muted)}
+footer em{display:block;color:var(--white);font-style:normal;font-weight:600;margin-bottom:2px}
+.split{display:grid;gap:28px}
+.rules-grid{margin:22px 0 10px}
+@media (min-width:720px){.rules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}}
+.rules-grid div{margin-bottom:12px;padding-top:10px;border-top:3px solid var(--navy)}
+.rules-grid b{display:block;font-family:var(--display);font-weight:700;font-size:18px}
+.rules-grid span{font-size:15px;color:var(--ink-muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.logo-lg{display:block;height:128px;width:auto;margin:0 0 18px -6px}
+.logo-md{display:block;height:84px;width:auto;margin:0 0 14px -4px}
+@media (max-width:520px){.logo-lg{height:96px}.logo-md{height:68px}}
+body::after{opacity:.16}
+
+/* ---- shared additions for the multi-page site ---- */
+.name-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.name-row{grid-template-columns:1fr}}
+.field-note{font-size:14px;color:var(--ink-muted);margin:-6px 0 14px}
+.tabs{display:inline-flex;gap:4px;padding:4px;background:var(--mist);border-radius:var(--radius-md);margin:0 0 14px}
+.tabs button{appearance:none;border:0;background:transparent;padding:8px 14px;border-radius:var(--radius-sm);font-weight:700;font-size:15px;cursor:pointer;color:var(--ink-muted)}
+.tabs button[aria-selected="true"]{background:var(--white);color:var(--navy);box-shadow:0 1px 2px rgba(2,32,51,.15)}
+.pb{display:inline-block;background:var(--navy);color:var(--white);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:4px 12px;border-radius:var(--radius-pill);margin:0 0 10px}
+.linkish{color:var(--navy);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.linkish:hover{color:var(--red-deep)}
+.board-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* ---------- Team Leader game ---------- */
+.wrap.wide{max-width:1140px}
+.sheet.tight{padding:20px 22px}
+@media (max-width:520px){.sheet.tight{padding:14px 12px}}
+.topbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 12px}
+.stat{display:flex;flex-direction:column;line-height:1.1}
+.stat span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted)}
+.stat b{font-family:var(--display);font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.cyclebox{flex:1;min-width:180px}
+.cyclebox .ctrack{height:8px;background:var(--mist);border-radius:var(--radius-pill);overflow:hidden;margin-top:6px}
+.cyclebox .ctrack i{display:block;height:100%;width:0;background:var(--navy);transition:width .2s linear}
+.cyclebox .ctrack i.due{background:var(--red)}
+.cyclebox .clabel{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.ff{background:var(--sky);color:var(--navy);font-weight:700;font-size:13px;padding:3px 10px;border-radius:var(--radius-pill);letter-spacing:.06em;text-transform:uppercase}
+.modetag{font-size:13px;font-weight:700;color:var(--ink-muted)}
+.hint{background:var(--navy);color:#fff;border-radius:var(--radius-md);padding:10px 14px;margin:0 0 12px;font-size:16px}
+.main{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+@media (max-width:900px){
+  .main{grid-template-columns:1fr;gap:0}
+  .main > div{display:contents}
+  .scene{order:1}.mon{order:2;margin-top:10px}.actions{order:3}.roster{order:4}.roster-note{order:5}.loghead{order:6}.log{order:7}
+  .actions{display:grid;grid-template-columns:1fr 1fr}
+  .actions .btn{font-size:15px;padding:10px 8px}
+  .actions > .phead,.actions > .plabel,.actions > .pgrid,.actions > .prow{grid-column:1/3}
+}
+.scene{background:var(--ice);border-radius:var(--radius-md);overflow:hidden}
+.scene svg{display:block;width:100%;height:auto}
+.fig{transition:transform .9s ease-in-out}
+.bub{transition:opacity .2s;pointer-events:none}
+.figbtn{cursor:pointer}
+.figbtn:focus{outline:none}
+.figbtn.hover .torso,.figbtn:focus-visible .torso{stroke:#022033;stroke-width:4}
+.paused .figbtn{cursor:default}
+.pushing{animation:push .545s ease-in-out infinite}
+@keyframes push{0%,100%{transform:translateY(0)}45%{transform:translateY(7px)}}
+#dog .chest{transform-box:fill-box;transform-origin:50% 100%}
+#dog.compressing .chest{animation:squash var(--push,.545s) ease-in-out infinite}
+@keyframes squash{0%,100%{transform:scaleY(1)}45%{transform:scaleY(.86)}}
+.bagging .bag{transform-box:fill-box;transform-origin:center;animation:bag 6s ease-in-out infinite}
+@keyframes bag{0%,100%{transform:scale(1)}6%{transform:scale(.62)}14%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pushing,#dog.compressing .chest,.bagging .bag{animation:none}.fig{transition:none}}
+.roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.member{appearance:none;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:8px;align-items:center;text-align:left;padding:10px 12px;border:2px solid var(--mist);border-radius:var(--radius-md);background:#fff;cursor:pointer;font:inherit}
+.member:hover:not(:disabled){border-color:var(--navy);background:var(--ice)}
+.member:disabled{opacity:.55;cursor:default}
+.member .dot{grid-row:1/3}
+.dot{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--navy);flex:none}
+.mname{font-family:var(--display);font-weight:800;font-size:17px}
+.mtask{font-size:13.5px;color:var(--ink-muted);grid-column:2}
+.mbar{grid-column:1/3;height:5px;background:var(--mist);border-radius:3px;overflow:hidden;margin-top:6px}
+.mbar i{display:block;height:100%;width:0;background:var(--navy)}
+.roster-note{font-size:13px;color:var(--ink-muted);margin:6px 2px 0}
+.mon{background:var(--navy);border-radius:var(--radius-md);overflow:hidden}
+.mrow{display:flex;position:relative}
+.mrow + .mrow{border-top:1px solid rgba(132,209,245,.25)}
+.mcanvas{position:relative;flex:1;min-width:0}
+.mcanvas canvas{position:absolute;inset:0;width:100%;height:100%}
+.ecgrow{height:132px}.co2row{height:84px}
+.mval{flex:0 0 84px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid rgba(132,209,245,.3);color:#fff}
+.mval small{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--sky)}
+.mval b{font-family:var(--display);font-weight:800;font-size:32px;line-height:1;font-variant-numeric:tabular-nums}
+.mval em{font-style:normal;font-size:11px;color:rgba(255,255,255,.6)}
+#co2Box small{color:#f2b134}
+#co2Box.low b{color:var(--red)}
+.off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:14px;font-weight:600;background:var(--navy)}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.actions .btn{width:100%;font-size:17px;padding:11px 16px}
+.btn.pulse{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(238,60,54,.55)}50%{box-shadow:0 0 0 8px rgba(238,60,54,0)}}
+.btn.shock{background:#b3261e}
+.btn.sm{padding:8px 14px;font-size:15px}
+.phead{display:flex;justify-content:space-between;align-items:center;background:var(--red);color:#fff;border-radius:var(--radius-md);padding:10px 14px}
+.phead b{font-family:var(--display);font-size:20px}
+.pcount{font-family:var(--display);font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.pcount.over{color:#ffe08a}
+.plabel{font-weight:700;margin:12px 0 6px}
+.pgrid{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;display:inline-flex;align-items:center;gap:6px;border:2px solid var(--mist);background:#fff;border-radius:var(--radius-md);padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
+.chip small{font-weight:400;color:var(--ink-muted);font-size:12px;display:block}
+.chip.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.chip.on small{color:rgba(255,255,255,.75)}
+.prow{display:flex;gap:8px;margin-top:12px}
+.prow .btn{flex:1}
+.loghead{display:flex;justify-content:space-between;align-items:baseline;margin:14px 2px 4px}
+.loghead b{font-family:var(--display);font-size:16px}
+.loghead span{font-size:12.5px;color:var(--ink-muted)}
+.log{list-style:none;margin:0;padding:0 8px;font-size:14px;color:var(--ink);height:200px;overflow-y:auto;border:1px solid var(--mist);border-radius:var(--radius-md);overscroll-behavior:contain}
+.log li{padding:5px 0;border-bottom:1px solid var(--mist)}
+.log li:last-child{border-bottom:0}
+.log b{color:var(--navy);font-variant-numeric:tabular-nums;margin-right:6px}
+.ltag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:var(--radius-pill);margin-right:2px;vertical-align:1px}
+.k-dx .ltag{background:var(--navy);color:#fff}
+.k-drug .ltag{background:#f2b134;color:var(--navy)}
+.k-shock .ltag{background:var(--red);color:#fff}
+.k-pause .ltag{background:var(--mist);color:var(--navy)}
+.k-dx,.k-drug,.k-shock{font-weight:600}
+/* modals */
+.modal{position:fixed;inset:0;z-index:40;background:rgba(2,32,51,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.mcard{background:#fff;border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:var(--shadow)}
+.mcard.wide{max-width:1000px}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--mist);position:sticky;top:0;background:#fff;z-index:1}
+.mhead b{font-family:var(--display);font-size:19px}
+.mclose{appearance:none;border:0;background:var(--mist);width:36px;height:36px;border-radius:50%;font-size:22px;cursor:pointer}
+.mback{appearance:none;border:0;background:var(--red);color:#fff;font:inherit;font-weight:700;font-size:15px;padding:8px 14px;border-radius:var(--radius-md);cursor:pointer;margin-right:12px;white-space:nowrap}
+.mback:hover{background:var(--red-deep)}
+.mhead{gap:8px}
+.mhead.left{justify-content:flex-start}
+.mbody{padding:14px 18px 18px}
+.tlist{display:grid;gap:6px}
+.titem{appearance:none;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:2px solid var(--mist);background:#fff;border-radius:var(--radius-md);padding:11px 14px;font:inherit;font-weight:700;cursor:pointer}
+.titem small{font-weight:600;color:var(--ink-muted)}
+.titem:hover:not(:disabled){border-color:var(--navy);background:var(--ice)}
+.titem:disabled{opacity:.45;cursor:not-allowed}
+.warn{color:var(--red-deep)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:8px 0 12px}
+.dgrid .chip{flex-direction:column;align-items:flex-start;gap:0}
+.drow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.drow label{font-weight:700}
+input.dose{width:110px;padding:9px 10px;font-size:18px;border:2px solid var(--mist);border-radius:var(--radius-sm);margin:0 4px}
+input.dose:focus{border-color:var(--navy);outline:none}
+.qtext{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 4px}
+.qlist{display:grid;gap:6px;margin:10px 0}
+.qopt{appearance:none;display:flex;gap:10px;align-items:center;text-align:left;border:2px solid var(--mist);background:#fff;border-radius:var(--radius-md);padding:10px 12px;font:inherit;cursor:pointer}
+.qopt .box{flex:0 0 20px;height:20px;border:2px solid var(--navy);border-radius:5px}
+.qopt.on .box{background:var(--navy)}
+.qopt.right{border-color:#1f7a4d;background:#e7f5ee}
+.qopt.wrong{border-color:var(--red);background:#fdeceb}
+.qfb{font-weight:700;min-height:1.2em}.qfb.good{color:#1f7a4d}.qfb.bad{color:var(--red-deep)}
+.chartwrap{overflow-x:auto}
+table.chart{border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;min-width:820px}
+table.chart th,table.chart td{border:1px solid var(--mist);padding:5px 7px;text-align:center}
+table.chart th{background:#ee3c36;color:#fff;font-weight:700}
+table.chart .lefth{text-align:left}
+table.chart td.lefth small{display:block;color:var(--ink-muted);font-size:11px}
+table.chart tr.grp td{background:var(--ice);font-weight:700;text-align:left;color:var(--navy)}
+table.chart .hl{background:#fff3c4;font-weight:800;outline:2px solid var(--navy)}
+table.chart th.hl{background:var(--navy);color:#fff}
+/* intro + end */
+.scard{border:1px solid var(--mist);border-radius:var(--radius-md);padding:16px 18px;margin:16px 0}
+.scard h3{margin:0}
+.tchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tchip{display:inline-flex;align-items:center;gap:6px;font-weight:700;background:var(--ice);padding:4px 12px;border-radius:var(--radius-pill)}
+.howlist{margin:8px 0 18px;padding-left:20px}
+.howlist li{margin:4px 0}
+.cats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.cat{border:1px solid var(--mist);border-radius:var(--radius-md);padding:10px 14px;min-width:130px}
+.cat b{display:block;font-family:var(--display);font-weight:800;font-size:24px}
+.cat span{font-size:14px;color:var(--ink-muted)}
+.metrics{display:grid;gap:4px;margin:6px 0 16px}
+.metric{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--mist);padding:6px 0;font-size:15px}
+.metric b{text-align:right}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.elist{list-style:none;padding:0;margin:0;font-size:15px}
+.elist li{padding:6px 0;border-bottom:1px solid var(--mist)}
+.elist b{display:inline-block;min-width:44px;font-variant-numeric:tabular-nums}
+#good b{color:#1f7a4d}#bad b{color:var(--red-deep)}
+.proto{font-size:14px;color:var(--ink-muted)}
+</style>
+</head>
+<body>
+<div class="wrap wide">
+
+  <!-- ============ INTRO ============ -->
+  <section id="screen-intro" class="sheet">
+    <img class="logo-md" src="data:image/webp;base64,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" alt="RECOVER">
+    <p class="eyebrow">RECOVER CPR guidelines · Prototype</p>
+    <h1>CPR Team Leader Challenge</h1>
+    <p class="muted">You're the team leader. Direct your team through a cardiac arrest using the RECOVER CPR algorithm: assign roles, add monitoring, read the rhythm at each pause, and give the right drugs at the right doses.</p>
+    <div class="scard">
+      <p class="eyebrow" id="scSub"></p>
+      <h3 id="scTitle"></h3>
+      <p style="margin:8px 0 0" id="scSummary"></p>
+      <div class="tchips" id="scTeam"></div>
+    </div>
+    <h3>How it works</h3>
+    <ul class="howlist">
+      <li><b>Give orders:</b> tap a teammate, then choose their task. Tasks take time, and each person does one thing at a time.</li>
+      <li><b>Run 2-minute cycles:</b> when everything you want is underway, tap <b>Finish cycle</b> to skip ahead to just before the 2-minute mark.</li>
+      <li><b>Pause and check in under 10 seconds:</b> name the rhythm, then pick who takes over compressions.</li>
+      <li><b>Dose from the chart:</b> type each drug's volume, using the RECOVER dosing chart.</li>
+      <li><b>Watch ETCO₂:</b> at 18 mmHg or below, troubleshoot compressions.</li>
+    </ul>
+    <div class="row">
+      <button class="btn" id="startStd">Start the case</button>
+      <button class="btn ghost" id="startCoach">Start in coached mode</button>
+    </div>
+    <p class="proto" style="margin-top:14px">Prototype: Scenario 1 only. Scores aren't saved yet. Coached mode shows hints during the case.</p>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section id="screen-game" class="sheet tight hidden">
+    <div class="topbar">
+      <div class="stat"><span>Case clock</span><b id="clock">0:00</b></div>
+      <div class="stat"><span>Cycle</span><b id="cycleNum">–</b></div>
+      <div class="cyclebox"><div class="clabel"><span>2-minute cycle</span><span id="cycleLeft">not started</span></div><div class="ctrack"><i id="cycleBar"></i></div></div>
+      <span class="ff hidden" id="ffBadge">Fast-forward</span>
+      <span class="modetag" id="modeTag"></span>
+      <button class="btn ghost sm" id="chartTop">Dosing chart</button>
+    </div>
+    <div class="hint hidden" id="hint"></div>
+    <div class="main">
+      <div>
+        <div class="scene">
+          <svg viewBox="0 -90 800 380" role="img" aria-label="The CPR team around a dog in lateral recumbency on a treatment table">
+            <rect x="0" y="270" width="800" height="20" fill="#c4eef9"/>
+            <g id="layerBack"></g>
+            <rect x="234" y="196" width="432" height="14" rx="4" fill="#022033"/>
+            <rect x="266" y="210" width="12" height="60" fill="#022033"/><rect x="622" y="210" width="12" height="60" fill="#022033"/>
+            <!-- drug cart -->
+            <g>
+              <rect x="142" y="200" width="70" height="70" rx="6" fill="#fff" stroke="#022033" stroke-width="2.5"/>
+              <path d="M142 224 H212 M142 248 H212" stroke="#022033" stroke-width="2"/>
+              <text x="177" y="217" text-anchor="middle" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" font-size="11" fill="#022033">DRUGS</text>
+            </g>
+            <!-- monitor cart -->
+            <g>
+              <rect x="676" y="214" width="66" height="56" rx="6" fill="#fff" stroke="#022033" stroke-width="2.5"/>
+              <rect x="679" y="170" width="60" height="40" rx="5" fill="#022033"/>
+              <path d="M684 192 h10 l4 -10 l5 18 l4 -8 h26" fill="none" stroke="#84d1f5" stroke-width="2"/>
+              <text x="709" y="234" text-anchor="middle" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" font-size="10" fill="#022033">MONITOR</text>
+            </g>
+            <!-- defibrillator -->
+            <g>
+              <rect x="748" y="214" width="48" height="56" rx="6" fill="#fff" stroke="#022033" stroke-width="2.5"/>
+              <rect x="750" y="182" width="44" height="30" rx="5" fill="#ee3c36" stroke="#022033" stroke-width="2"/>
+              <path d="M775 186 l-8 12 h6 l-3 10 l9 -13 h-6 z" fill="#fff"/>
+              <text x="772" y="234" text-anchor="middle" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" font-size="10" fill="#022033">DEFIB</text>
+            </g>
+            <g id="dog" transform="translate(130 0)">
+        <g transform="translate(340 196) scale(0.67) translate(-340 -196)">
+        <!-- dog in lateral recumbency (lying flat on its side): the whole silhouette rests on the table;
+             the legs are a slightly darker shade so they read against the body -->
+        <g fill="#9fb1bd">
+          <path d="M434 172 C 460 178, 488 188, 516 191 C 520 192, 520 196, 514 196 L 434 196 Z"/>
+          <path d="M378 196 C 378 166, 396 148, 412 148 C 432 148, 444 168, 442 196 Z"/>
+          <path class="chest" d="M258 168 C 258 148, 282 140, 322 141 C 366 142, 402 145, 420 154 C 438 164, 442 182, 438 196 L 262 196 C 258 188, 258 178, 258 168 Z"/>
+          <path d="M266 154 C 252 145, 238 143, 225 144 C 211 145, 203 152, 200 158 L 182 164 C 171 167, 166 178, 168 186 C 170 192, 174 196, 182 196 L 268 196 Z"/>
+          <path d="M222 149 C 232 141, 243 138, 248 140 C 246 148, 243 155, 238 160 Z"/>
+        </g>
+        <g fill="#6b8292">
+          <path d="M276 176 L 166 187 L 157 192 L 162 196 L 280 189 Z"/>
+          <path d="M292 184 L 190 191 L 182 196 L 296 196 Z"/>
+          <path d="M404 178 L 508 187 L 518 192 L 512 196 L 400 189 Z"/>
+          <path d="M418 186 L 520 191 L 528 196 L 414 196 Z"/>
+        </g>
+        </g>
+
+            </g>
+            <g id="layerFront"></g>
+            <g id="layerBubbles"></g>
+          </svg>
+        </div>
+        <div class="roster" id="roster"></div>
+        <p class="roster-note">Tap a teammate, in the scene or below, to give them a task.</p>
+        <div class="loghead"><b>Team log</b><span>Newest first · scroll for earlier events</span></div>
+        <ul class="log" id="log" aria-label="Team log, newest first"></ul>
+      </div>
+      <div>
+        <div class="mon">
+          <div class="mrow ecgrow"><div class="mcanvas"><canvas id="ecg"></canvas><div class="off" id="ecgOff">ECG leads not attached</div></div><div class="mval"><small>HR</small><b id="hrVal">---</b><em>bpm</em></div></div>
+          <div class="mrow co2row"><div class="mcanvas"><canvas id="co2"></canvas><div class="off" id="co2Off">Capnograph not connected</div></div><div class="mval" id="co2Box"><small>ETCO₂</small><b id="co2Val">--</b><em>mmHg</em></div></div>
+        </div>
+        <div class="actions" id="actions"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DEBRIEF ============ -->
+  <section id="screen-end" class="sheet hidden">
+    <img class="logo-md" src="data:image/webp;base64,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" alt="RECOVER">
+    <p class="eyebrow">Debrief</p>
+    <h2 id="endTitle"></h2>
+    <p class="muted" id="endSub"></p>
+    <div class="bigscore" id="finalScore">0</div>
+    <p class="muted">points</p>
+    <div class="cats" id="cats"></div>
+    <h3>Key measures</h3>
+    <div class="metrics" id="metrics"></div>
+    <div class="cols">
+      <div><h3>What went well</h3><ul class="elist" id="good"></ul></div>
+      <div><h3>What to improve</h3><ul class="elist" id="bad"></ul></div>
+    </div>
+    <details style="margin-top:18px"><summary><b>Case timeline</b></summary><ul class="elist" id="timeline" style="margin-top:8px"></ul></details>
+    <div class="row" style="margin-top:22px">
+      <button class="btn" id="againStd">Play again</button>
+      <button class="btn ghost" id="againCoach">Play in coached mode</button>
+      <button class="btn ghost" id="toIntro">Back to start</button>
+    </div>
+  </section>
+
+  <footer><em>Learn to lead when it matters most.</em><span>RECOVER Initiative</span></footer>
+</div>
+<script>
+/* =================================================================
+   ECG Rhythm Challenge — rhythm library
+   Every waveform is synthesized from math, in millivolts, at Lead II-like
+   morphology. Times are in seconds from the start of the rhythm.
+   Edit the teaching text ("teach") freely; rates are set per rhythm.
+   ================================================================= */
+window.RHYTHM_LIB = (function () {
+
+  const g = (x, m, s, a) => a * Math.exp(-((x - m) * (x - m)) / (2 * s * s));
+  const TAU = Math.PI * 2;
+
+  // smooth, deterministic "fuzz" so traces don't look computer-perfect
+  function fuzz(t, seed) {
+    return 0.5 * Math.sin(t * 311.7 + seed) + 0.3 * Math.sin(t * 523.1 + seed * 1.7) + 0.2 * Math.sin(t * 977.3 + seed * 2.3);
+  }
+  function wander(t, seed) { return 0.035 * Math.sin(TAU * 0.27 * t + seed) + 0.02 * Math.sin(TAU * 0.11 * t + seed * 3); }
+
+  // ---- beat templates (x = seconds since the beat began) ----
+  // narrow, sinus-looking complex: P wave, narrow QRS (~40 ms), upright T
+  function sinusBeat(x) {
+    return g(x, .060, .018, .12)          // P
+         - g(x, .132, .006, .10)          // Q
+         + g(x, .150, .0085, 1.15)        // R
+         - g(x, .168, .0075, .30)         // S
+         + g(x, .320, .036, .28);         // T
+  }
+  // wide, bizarre ventricular complex (~140 ms) with a discordant T; k stretches it
+  function wideBeat(x, k) {
+    k = k || 1;
+    return g(x, .060 * k, .030 * k, 1.00)
+         - g(x, .135 * k, .040 * k, .78)
+         + g(x, .190 * k, .022 * k, .10)
+         - g(x, .340 * k, .070 * k, .36);
+  }
+
+  // regular rhythm from a beat template; sums the last few beats so T waves overlap naturally
+  // LEAD: the first complex begins this many seconds after compressions stop,
+  // so it's visible as soon as the artifact clears
+  const LEAD = 0.08;
+  function regular(interval, beat, opts) {
+    opts = opts || {};
+    return function (t, v) {
+      if (t < 0) return 0;
+      t = t - LEAD;
+      if (t < 0) return wander(t, v.seed) + (opts.noise || 0.012) * fuzz(t, v.seed);
+      const n = Math.floor(t / interval);
+      let y = 0;
+      for (let k = n; k >= Math.max(0, n - 2); k--) {
+        // tiny beat-to-beat amplitude variation
+        const amp = 1 + 0.04 * Math.sin(k * 2.1 + v.seed);
+        y += amp * beat(t - k * interval);
+      }
+      return v.amp * y + wander(t, v.seed) + (opts.noise || 0.012) * fuzz(t, v.seed);
+    };
+  }
+
+  // monomorphic VT: large, regular, sine-like wide complexes
+  function vt(rate) {
+    const p = 60 / rate;
+    return function (t, v) {
+      if (t < 0) return 0;
+      const ph = TAU * t / p;
+      const y = Math.sin(ph) + 0.28 * Math.sin(2 * ph + 0.7) + 0.08 * Math.sin(3 * ph + 1.9);
+      const amMod = 1 + 0.06 * Math.sin(TAU * 0.35 * t + v.seed);
+      return v.amp * 0.60 * amMod * y + wander(t, v.seed) * 0.6 + 0.015 * fuzz(t, v.seed);
+    };
+  }
+
+  // monomorphic VT with discrete complexes: sharp tall upstroke, deep negative trough,
+  // then a brief near-flat segment (with a small notch) before the next complex
+  function vtSpiky(rate) {
+    const p = 60 / rate;
+    return function (t, v) {
+      if (t < 0) return 0;
+      const k = Math.floor(t / p), f = (t - k * p) / p;              // position within the complex, 0..1
+      const amp = 1 + 0.05 * Math.sin(k * 1.7 + v.seed);              // slight beat-to-beat variation
+      const y = g(f, .13, .045, 1.15)                                 // tall, narrow upstroke
+              - g(f, .34, .075, 1.25)                                 // deep negative trough
+              + g(f, .58, .025, 0.09) - g(f, .66, .02, 0.06);         // small notch on the flat segment
+      return 0.8 * v.amp * amp * y + wander(t, v.seed) * 0.5 + 0.02 * fuzz(t, v.seed);
+    };
+  }
+
+  // ventricular fibrillation: chaotic, frequency- and amplitude-modulated oscillation
+  function vf(baseHz, amplitude) {
+    // five incommensurate components, each with strong frequency wobble, under a shifting envelope
+    const comps = [[1.00, .55], [1.31, .38], [0.74, .36], [1.67, .22], [0.53, .28]];
+    return function (t, v) {
+      if (t < 0) return 0;
+      const s = v.seed;
+      let y = 0;
+      comps.forEach(([m, w], i) => {
+        y += w * Math.sin(TAU * baseHz * m * t + 2.8 * Math.sin(TAU * (0.29 + 0.19 * i) * t + s * (i + 1)) + s * (i + 2));
+      });
+      const env = 0.45 + 0.55 * Math.abs(Math.sin(TAU * 0.33 * t + s)) * (0.7 + 0.3 * Math.sin(TAU * 1.3 * t + s * 2));
+      return v.amp * amplitude * 0.62 * env * y + 0.6 * wander(t, s) + 0.02 * fuzz(t, s);
+    };
+  }
+
+  function asystole() {
+    return function (t, v) { return wander(t, v.seed) * 0.9 + 0.01 * fuzz(t, v.seed); };
+  }
+
+  // chest-compression artifact: one large deflection per compression (~110/min) plus noise
+  function compressionArtifact(t, seed) {
+    const p = 60 / 110, k = Math.floor(t / p), x = (t - k * p) / p;   // x in [0,1)
+    const depth = 1 + 0.08 * Math.sin(k * 1.9 + seed);                // compression-to-compression variation
+    let y;
+    if (x < 0.42) y = 1.05 * Math.sin(Math.PI * x / 0.42);           // downstroke push
+    else y = -0.24 * Math.sin(Math.PI * (x - 0.42) / 0.58);          // recoil
+    return depth * y - 0.2 + 0.07 * fuzz(t, seed) + 2.0 * wander(t, seed);
+  }
+
+  // ---- categories (the five answer choices) ----
+  const CATS = [
+    { key: "asys", label: "Asystole",                shockable: false },
+    { key: "pea",  label: "PEA",                     shockable: false },
+    { key: "vf",   label: "Ventricular fibrillation", short: "VF", shockable: true },
+    { key: "pvt",  label: "Pulseless VT",            shockable: true },
+    { key: "rosc", label: "ROSC",                    shockable: false }
+  ];
+
+  // ---- the ten rhythms ----
+  // DRAFT teaching text: review and edit to match RECOVER wording.
+  const RHYTHMS = [
+    { key: "pea38w", cat: "pea", rate: 38, detail: "Wide complexes, about 38/min",
+      fn: regular(60 / 38, x => wideBeat(x, 1.15)),
+      teach: "No pulse, but consistent, repeating complexes (slow, wide and bizarre) at well under 200/min. That makes it PEA. Non-shockable." },
+    { key: "pea60w", cat: "pea", rate: 60, detail: "Wide complexes, about 60/min",
+      fn: regular(60 / 60, x => wideBeat(x, 1.05)),
+      teach: "Consistent, repeating wide complexes at about 60/min without a pulse: PEA. Non-shockable." },
+    { key: "pea94n", cat: "pea", rate: 94, detail: "Narrow complexes, about 94/min, sinus-looking",
+      fn: regular(60 / 94, sinusBeat),
+      teach: "This looks like a normal sinus rhythm, but there is no pulse: consistent, repeating complexes under 200/min without a pulse is PEA. A normal-looking ECG never proves circulation; the pulse check decides. Non-shockable." },
+    { key: "pea164w", cat: "pea", rate: 164, detail: "Wide complexes, about 164/min",
+      fn: regular(60 / 164, x => wideBeat(x, 0.80)),
+      teach: "Fast, wide, consistent complexes without a pulse, but the rate (about 164/min) is below 200/min, so by the RECOVER algorithm this is PEA, not pulseless VT. Non-shockable." },
+    { key: "pvt226", cat: "pvt", rate: 226, detail: "Wide complexes, about 226/min",
+      fn: vt(226),
+      teach: "No pulse, consistent and repeating wide complexes, and a rate above 200/min (about 226/min): pulseless ventricular tachycardia. Shockable." },
+    { key: "pvt268", cat: "pvt", rate: 268, detail: "Wide complexes, about 268/min",
+      fn: vtSpiky(268),
+      teach: "No pulse, consistent and repeating wide complexes, and a rate well above 200/min (about 268/min): pulseless ventricular tachycardia. Shockable." },
+    { key: "asys", cat: "asys", rate: 0, detail: "No electrical activity",
+      fn: asystole(),
+      teach: "A flat line with no electrical activity. Before calling asystole, check that the leads are attached and the gain is turned up, because fine VF can hide as a flat line. Non-shockable." },
+    { key: "vfFine", cat: "vf", rate: null, hr: "none", detail: "Fine VF: high frequency, low amplitude",
+      fn: vf(9.5, 0.23),
+      teach: "Fine VF: small, rapid, chaotic oscillations with no identifiable complexes. It is easy to mistake for asystole, so check gain and leads. Shockable." },
+    { key: "vfMed", cat: "vf", rate: null, hr: "none", detail: "VF: intermediate frequency and amplitude",
+      fn: vf(6.5, 0.48),
+      teach: "Chaotic, irregular electrical activity with no identifiable QRS complexes and no pulse: ventricular fibrillation. Shockable." },
+    { key: "vfCoarse", cat: "vf", rate: null, hr: "wild", detail: "Coarse VF: low frequency, high amplitude",
+      fn: vf(4.3, 1.0),
+      teach: "Coarse VF: large, slow, chaotic undulations with no consistent shape. Its irregularity separates it from the regular complexes of pulseless VT. Shockable." },
+    { key: "rosc", cat: "rosc", rate: 132, detail: "Sinus rhythm with a pulse, about 132/min",
+      fn: regular(60 / 132, sinusBeat),
+      teach: "Organized sinus rhythm with a palpable pulse: return of spontaneous circulation. A sudden, sustained rise in ETCO\u2082 is often the first sign." }
+  ];
+
+  // What the monitor's HR box shows for a rhythm:
+  //   a number near the rhythm's rate, "0" for asystole, "---" when the monitor can't count ("none"),
+  //   or a number jumping around wildly ("wild"), as monitors sometimes do in VF.
+  function hrMode(r) { return r.hr || (r.cat === "asys" ? "zero" : "rate"); }
+  // seconds after compressions stop before the HR box shows a number:
+  // at least 1 s, and for organized rhythms not until the second complex has appeared
+  function hrDelay(r) {
+    if (hrMode(r) !== "rate" || !r.rate) return 1.0;
+    return Math.max(1.0, LEAD + 60 / r.rate + 0.25);
+  }
+  function hrDescribe(r) {
+    const m = hrMode(r);
+    return m === "none" ? "---" : m === "wild" ? "jumps around wildly" : m === "zero" ? "0" : "about " + r.rate;
+  }
+
+  const catOf = key => CATS.find(c => c.key === key);
+  const byKey = key => RHYTHMS.find(r => r.key === key);
+
+  // per-round variation so repeat plays don't show identical strips
+  function variant(seed) { return { seed: seed, amp: 0.92 + 0.16 * ((Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1 }; }
+
+  return { CATS, RHYTHMS, catOf, byKey, compressionArtifact, variant, hrMode, hrDescribe, hrDelay };
+})();
+
+</script>
+<script>
+/* ECG monitor: navy screen, paper-style grid (big box = 0.2 s, 0.5 mV),
+   one-second tick marks, and a sweeping trace that overwrites itself like a real monitor. */
+window.Monitor = (function () {
+  const SECONDS = 5;          // seconds shown across the screen (25 big boxes)
+  const GAP = 0.12;           // blank "eraser" gap ahead of the sweep, in seconds
+
+  function setup(canvas) {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(r.width * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+    const ctx = canvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = r.width, h = r.height, box = w / (SECONDS * 5);   // px per big box (0.2 s)
+    return { ctx, w, h, box, mv: box * 2, base: h * 0.53 };      // 1 mV = 2 big boxes
+  }
+
+  function grid(m) {
+    const { ctx, w, h, box } = m;
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+    // small boxes
+    ctx.strokeStyle = "rgba(132,209,245,0.09)"; ctx.beginPath();
+    for (let x = 0; x <= w + 0.5; x += box / 5) { ctx.moveTo(Math.round(x) + .5, 0); ctx.lineTo(Math.round(x) + .5, h); }
+    for (let y = m.base % (box / 5); y <= h; y += box / 5) { ctx.moveTo(0, Math.round(y) + .5); ctx.lineTo(w, Math.round(y) + .5); }
+    ctx.stroke();
+    // big boxes
+    ctx.strokeStyle = "rgba(132,209,245,0.24)"; ctx.beginPath();
+    for (let x = 0; x <= w + 0.5; x += box) { ctx.moveTo(Math.round(x) + .5, 0); ctx.lineTo(Math.round(x) + .5, h); }
+    for (let y = m.base % box; y <= h; y += box) { ctx.moveTo(0, Math.round(y) + .5); ctx.lineTo(w, Math.round(y) + .5); }
+    ctx.stroke();
+    // one-second ticks along the top
+    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2; ctx.beginPath();
+    for (let s = 0; s <= SECONDS; s++) { const x = Math.min(w - 1, Math.max(1, s * box * 5)); ctx.moveTo(x, 0); ctx.lineTo(x, 9); }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = '700 11px "Source Sans 3", Arial, sans-serif';
+    ctx.fillText("II", 8, h - 10);
+    ctx.textAlign = "right"; ctx.fillText("25 mm/s · ticks = 1 s", w - 8, h - 10); ctx.textAlign = "left";
+  }
+
+  // Draw a sweeping trace. sig(t) returns mV (or null for "no data yet"); T = seconds elapsed.
+  function sweep(m, sig, T, color) {
+    grid(m);
+    const { ctx, w, mv, base } = m;
+    const phase = T % SECONDS, sweepN = Math.floor(T / SECONDS);
+    ctx.strokeStyle = color || "#ffffff"; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    let pen = false;
+    const step = 0.5;                                   // half-pixel sampling keeps narrow QRS crisp
+    for (let x = 0; x <= w; x += step) {
+      const s = x / w * SECONDS;
+      let t;
+      if (s <= phase) t = sweepN * SECONDS + s;
+      else if (s > phase + GAP) t = (sweepN - 1) * SECONDS + s;
+      else { pen = false; continue; }
+      const v = t >= 0 ? sig(t) : null;
+      if (v == null) { pen = false; continue; }
+      const y = base - v * mv;
+      if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // bright dot at the sweep position
+    if (T >= 0) {
+      const v = sig(T);
+      if (v != null) { ctx.fillStyle = color || "#ffffff"; ctx.beginPath(); ctx.arc(phase / SECONDS * w, base - v * mv, 3.2, 0, 7); ctx.fill(); }
+    }
+  }
+
+  // Static strip of a whole window starting at t0 (used by the review gallery)
+  function strip(m, sig, t0, color) {
+    grid(m);
+    const { ctx, w, mv, base } = m;
+    ctx.strokeStyle = color || "#ffffff"; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.beginPath();
+    for (let x = 0; x <= w; x += 0.5) {
+      const y = base - sig(t0 + x / w * SECONDS) * mv;
+      x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  return { SECONDS, setup, grid, sweep, strip };
+})();
+
+</script>
+<script>
+/* =================================================================
+   CPR Team Leader Challenge: editable content
+   Scoring values, timing, the dosing chart, coaching questions and the scenario.
+   ================================================================= */
+
+// ---- Points (all adjustable during testing) ----
+window.POINTS = {
+  compressionsFast: 100,        // compressions started within 10 s; falls to 0 at 30 s
+  ventilationCycle1: 50,
+  ecgCycle1: 50,
+  capnoCycle1: 50,
+  ivCycle1: 50,
+  correctRhythm: 100,           // each pause and check
+  pauseUnder10: 50,             // each pause and check
+  pauseOverPerSecond: -10,      // each second beyond 10 s
+  rotation: 25,                 // fresh compressor at each pause
+  vasopressorOnTime: 75,        // each vasopressor on a correct cycle
+  vasopressorConsecutive: -75,  // vasopressor in consecutive cycles
+  vasopressorBeforeDiagnosis: -50,
+  atropineEarly: 25,            // "suggest" item: bonus, never a penalty for omitting
+  notIndicated: -25,            // a drug the case doesn't call for
+  correctDose: 25,
+  wrongDose: -50,
+  coachingCorrect: 25,
+  lowEtco2Ignored: -50,         // ETCO2 <= 18 left untroubleshot for more than 30 s
+  shockNonShockable: -200,      // and ROSC becomes impossible
+  unattendedPerSecond: -20,     // nobody on compressions during a cycle
+  unattendedCap: -300,
+  rosc: 100
+};
+
+// ---- Timing (case-clock seconds unless noted) ----
+window.TIMING = {
+  cycle: 120,
+  fastForwardStopsBefore: 10,   // fast-forward stops 10 s before the 2-minute mark
+  fastForwardRealSeconds: 5,    // ...and takes about 5 real seconds
+  pauseBudget: 10,              // real seconds
+  caseLimit: 20 * 60,
+  lowEtco2Grace: 30,
+  tasks: { intubate: 20, ecg: 15, capno: 10, checkiv: 10, placeiv: 45, drug: 15, charge: 5 }
+};
+
+// ---- RECOVER CPR Dosing Chart for Dogs and Cats (2024), biphasic version ----
+window.DOSING = {
+  weights: [2.5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+  drugs: [
+    { key: "epinephrine", name: "Epinephrine", conc: "1:1000; 1 mg/mL", dose: "0.01 mg/kg", group: "Arrest", mL: [0.03, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5] },
+    { key: "vasopressin", name: "Vasopressin", conc: "20 U/mL", dose: "0.8 U/kg", group: "Arrest", mL: [0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2] },
+    { key: "atropine", name: "Atropine", conc: "0.4–0.54 mg/mL", dose: "~0.05 mg/kg", group: "Arrest", mL: [0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] },
+    { key: "amiodarone", name: "Amiodarone", conc: "50 mg/mL", dose: "5 mg/kg", group: "Antiarrhythmic", mL: [0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] },
+    { key: "lidocaine", name: "Lidocaine", conc: "20 mg/mL", dose: "2 mg/kg", group: "Antiarrhythmic", mL: [0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] },
+    { key: "esmolol", name: "Esmolol*", conc: "10 mg/mL", dose: "0.5 mg/kg", group: "Antiarrhythmic", mL: [0.13, 0.25, 0.5, 0.75, 1, 1.3, 1.5, 1.8, 2, 2.3, 2.5] },
+    { key: "naloxone", name: "Naloxone", conc: "0.4 mg/mL", dose: "0.04 mg/kg", group: "Reversal", mL: [0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] },
+    { key: "flumazenil", name: "Flumazenil", conc: "0.1 mg/mL", dose: "0.01 mg/kg", group: "Reversal", mL: [0.25, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] },
+    { key: "atipamezole", name: "Atipamezole", conc: "5 mg/mL", dose: "100 µg/kg", group: "Reversal", mL: [0.06, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
+  ],
+  defib: [
+    { name: "External defib (biphasic)", dose: "2–4 J/kg", J: [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] },
+    { name: "Internal defib (biphasic)", dose: "0.2–0.4 J/kg", J: [1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+  ],
+  footnote: "*Administer esmolol 0.5 mg/kg IV or IO over 3–5 minutes followed by a CRI at 50 mcg/kg/min",
+  credit: "© 2024 The RECOVER Initiative. All rights reserved."
+};
+// Round up to the next chart weight when the patient falls between columns
+window.chartColumn = function (kg) {
+  const w = DOSING.weights;
+  for (let i = 0; i < w.length; i++) if (kg <= w[i] + 1e-9) return i;
+  return w.length - 1;
+};
+
+// ---- Coaching questions for low ETCO2 (one is asked each time) ----
+window.COACHING = [
+  { q: "What rate should the compressor target?",
+    options: [["100–120 compressions per minute", true], ["60–80 compressions per minute", false], ["140–160 compressions per minute", false]] },
+  { q: "What depth should the compressor target?",
+    options: [["1/3 to 1/2 the width of the chest", true], ["1/4 to 1/3 the width of the chest", false], ["1/2 to 2/3 the width of the chest", false]] },
+  { q: "How should the compressor's hands be oriented?",
+    options: [["One hand on top of the other, fingers interlaced", true], ["Hands side by side, as close as possible", false], ["Fingertips on the chest", false]] },
+  { q: "How should the compressor's shoulders and hands be oriented?",
+    options: [["Shoulders directly above the hands", true], ["Shoulders behind the hands", false], ["Leaning to one side", false]] },
+  { q: "Should the compressor's elbows be bent?",
+    options: [["No: elbows locked, arms straight", true], ["Yes, slightly bent", false], ["Yes, bent to about 90 degrees", false]] }
+];
+
+// ---- Scenario 1 ----
+window.SCENARIO = {
+  id: "s1",
+  title: "Collapse on the ward",
+  subtitle: "Scenario 1",
+  species: "dog",
+  weightKg: 30,
+  summary: "A 9-year-old, 30 kg Labrador retriever hospitalized for pneumonia is found unresponsive and apneic in its kennel and has been moved to the treatment table. An IV catheter is already in place. No monitoring is attached.",
+  team: [
+    { id: "alex", name: "Alex", shirt: "#84d1f5" },
+    { id: "sam", name: "Sam", shirt: "#ee3c36" },
+    { id: "priya", name: "Priya", shirt: "#f2b134" }
+  ],
+  hasIV: true,
+  poorTechniqueFirstCompressor: true,      // a built-in low-ETCO2 challenge
+  peaSequence: ["pea94n", "pea38w", "pea60w"], // rhythm found at pause 1, 2, 3 (and after)
+  roscAtPause: [3, 4],                     // chosen at random each play
+  indicated: ["epinephrine", "vasopressin", "atropine"],
+  vasopressors: ["epinephrine", "vasopressin"]
+};
+
+</script>
+<script>
+/* =================================================================
+   CPR Team Leader Challenge: case engine and interface (prototype)
+   ================================================================= */
+(function () {
+  const L = window.RHYTHM_LIB, P = window.POINTS, T = window.TIMING, D = window.DOSING, SC = window.SCENARIO;
+  const $ = id => document.getElementById(id);
+  const realNow = () => performance.now() / 1000;
+  const fmt = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+  // ---------- scene geometry (SVG units) ----------
+  const STATION_X = { chest: 466, head: 372, drug: 177, monitor: 709, defib: 772 };
+  const IDLE_X = [28, 72, 116, 156];
+  const TASKS = {
+    compress: { label: "Start compressions", station: "chest", continuous: true },
+    intubate: { label: "Intubate", station: "head" },
+    ventilate: { label: "Ventilate", station: "head", continuous: true },
+    ecg: { label: "Attach ECG leads", station: "monitor" },
+    capno: { label: "Connect capnograph", station: "monitor" },
+    checkiv: { label: "Check the IV catheter", station: "drug" },
+    placeiv: { label: "Place a new IV catheter", station: "drug" },
+    drug: { label: "Give a drug", station: "drug" },
+    charge: { label: "Charge the defibrillator", station: "defib" }
+  };
+  const RHYTHM_CHOICES = [["asys", "Asystole"], ["pea", "PEA"], ["vf", "VF"], ["pvt", "Pulseless VT"], ["rosc", "ROSC"]];
+
+  // ---------- state ----------
+  let S = null;
+  function newState(coached) {
+    return {
+      phase: "running", coached,
+      sim: 0, rate: 1, ffTarget: null,
+      cycle: 0, cycleStart: null,
+      team: SC.team.map((t, i) => Object.assign({}, t, { idx: i, task: null, compressStart: null, poorTech: false, bubble: null })),
+      ecg: false, ecgReal0: null, capno: false, intubated: false, iv: false, charged: null,
+      firstCompressionAt: null, ventStartAt: null, ecgAt: null, capnoAt: null, ivAt: null,
+      firstCompressorAssigned: false,
+      unattended: 0,
+      lowSince: null, lowPenalized: false, coachingAsked: [],
+      roscAtPause: SC.roscAtPause[Math.floor(Math.random() * SC.roscAtPause.length)],
+      roscBlocked: false,
+      pauses: [], pause: null, shocks: [], drugs: [],
+      events: [], log: [],
+      lastQuality: 0, etco2Shown: null,
+      compressingLast: false, stopReal: realNow(), artSeed: Math.random() * 100,
+      variant: L.variant(Math.random() * 100),
+      outcome: null,
+      lastReal: realNow()
+    };
+  }
+
+  // ---------- helpers ----------
+  const compressor = () => S.team.find(m => m.task && m.task.type === "compress");
+  const ventilator = () => S.team.find(m => m.task && m.task.type === "ventilate");
+  const compressingActive = () => S.phase === "running" && !!compressor();
+  const cycleTime = () => S.cycleStart == null ? 0 : S.sim - S.cycleStart;
+  function log(msg, kind) { S.log.push({ t: S.sim, msg, kind: kind || "" }); renderLog(); }
+  function score(cat, pts, msg) { S.events.push({ t: S.sim, cat, pts, msg }); }
+  function say(m, text, secs) { m.bubble = { text, until: realNow() + (secs || 2.6) }; }
+  function peaFor(k) { return SC.peaSequence[Math.min(k - 1, SC.peaSequence.length - 1)]; }
+  function rhythmKeyNow() {
+    // the underlying rhythm during cycle k (what the next pause will find), with ROSC appearing midway
+    const k = Math.max(1, S.cycle);
+    if (S.pause) return S.pause.rhythm;
+    if (k === S.roscAtPause && !S.roscBlocked && S.lastQuality >= 18 && cycleTime() > 60) return "rosc";
+    return peaFor(k);
+  }
+  const rhythm = () => L.byKey(rhythmKeyNow());
+
+  // ---------- ETCO2 model ----------
+  function qualityNow() {
+    const c = compressor();
+    if (!c || S.phase !== "running") return null;
+    let q = c.poorTech ? 15 : 22;
+    const dur = S.sim - (c.compressStart || S.sim);
+    if (dur > 130) q = Math.min(q, 16);
+    return q;
+  }
+  // the value ETCO2 is heading toward right now (the display moves toward it gradually)
+  function etco2Target() {
+    if (rhythmKeyNow() === "rosc") return 38;
+    const q = qualityNow();
+    return q == null ? 8 : q;      // no compressions: no pulmonary blood flow
+  }
+  // the displayed, breath-to-breath ETCO2
+  function etco2Now() { return S.etco2Disp == null ? etco2Target() : Math.round(S.etco2Disp); }
+
+  // ---------- teammates and tasks ----------
+  function assign(m, type, data) {
+    const prev = m.task;
+    if (prev && prev.type === "compress" && type !== "compress") log(m.name + " stopped compressions.");
+    if (prev && prev.type === "ventilate" && type !== "ventilate") log(m.name + " stopped ventilating.");
+    if (type === "compress") {
+      const cur = compressor(); if (cur && cur !== m) { cur.task = null; log(cur.name + " handed over compressions."); }
+      if (!(prev && prev.type === "compress")) m.compressStart = S.sim;
+      m.task = { type, start: S.sim };
+      if (SC.poorTechniqueFirstCompressor && !S.firstCompressorAssigned) { m.poorTech = true; S.firstCompressorAssigned = true; }
+      if (S.firstCompressionAt == null) { S.firstCompressionAt = S.sim; S.cycle = 1; S.cycleStart = S.sim; }
+      say(m, "On compressions"); log(m.name + " started compressions.");
+    } else if (type === "ventilate") {
+      if (!S.intubated) { say(m, "Not intubated yet"); return; }
+      const cur = ventilator(); if (cur && cur !== m) cur.task = null;
+      m.task = { type, start: S.sim };
+      if (S.ventStartAt == null) S.ventStartAt = S.sim;
+      say(m, "Ventilating"); log(m.name + " is ventilating every 6 seconds.");
+    } else if (type === "idle") {
+      m.task = null; say(m, "Standing by"); log(m.name + " is standing by.");
+    } else {
+      if (type === "capno" && !S.intubated) { say(m, "Need the tube in first"); return; }
+      m.task = { type, start: S.sim, dur: T.tasks[type], data };
+      const msg = { intubate: "Intubating", ecg: "Attaching leads", capno: "Connecting capnograph", checkiv: "Checking the IV", placeiv: "Placing a catheter", drug: "Drawing up " + (data && data.name), charge: "Charging" }[type];
+      const logMsg = { intubate: "is intubating", ecg: "is attaching ECG leads", capno: "is connecting the capnograph", checkiv: "is checking the IV catheter", placeiv: "is placing a new IV catheter", drug: "is drawing up " + (data && data.name) + (data && data.mL != null ? " " + data.mL + " mL" : ""), charge: "is charging the defibrillator to " + (data && data.J) + " J" }[type];
+      say(m, msg); log(m.name + " " + logMsg + ".");
+    }
+    renderRoster(); renderActions();
+  }
+  function finishTask(m) {
+    const t = m.task; m.task = null;
+    if (t.type === "intubate") {
+      S.intubated = true; log(m.name + ": tube is in. Starting ventilation.");
+      m.task = { type: "ventilate", start: S.sim }; if (S.ventStartAt == null) S.ventStartAt = S.sim;
+      say(m, "Tube's in, ventilating");
+    } else if (t.type === "ecg") { S.ecg = true; S.ecgAt = S.sim; S.ecgReal0 = realNow(); say(m, "Leads on"); log(m.name + ": ECG leads on."); }
+    else if (t.type === "capno") { S.capno = true; S.capnoAt = S.sim; say(m, "Capnograph on"); log(m.name + ": capnograph connected."); }
+    else if (t.type === "checkiv" || t.type === "placeiv") { S.iv = true; S.ivAt = S.sim; say(m, t.type === "checkiv" ? "IV is patent" : "IV in"); log(m.name + ": IV access ready."); }
+    else if (t.type === "drug") { giveDrug(m, t.data); }
+    else if (t.type === "charge") { S.charged = { J: t.data.J }; say(m, "Charged to " + t.data.J + " J"); log(m.name + ": defibrillator charged to " + t.data.J + " J."); }
+    renderRoster(); renderActions();
+  }
+
+  // ---------- drugs ----------
+  function correctDose(key) {
+    const d = D.drugs.find(x => x.key === key); if (!d) return null;
+    return d.mL[chartColumn(SC.weightKg)];
+  }
+  function giveDrug(m, data) {
+    const rec = { key: data.key, name: data.name, mL: data.mL, t: S.sim, cycle: S.cycle, beforeDx: S.pauses.length === 0 };
+    S.drugs.push(rec);
+    say(m, data.mL != null ? data.name + " " + data.mL + " mL given" : data.name + " given");
+    log(m.name + ": " + data.name + (data.mL != null ? " " + data.mL + " mL" : "") + " given (cycle " + S.cycle + ").", "drug");
+  }
+
+  // ---------- main loop ----------
+  function tick() {
+    if (!S || S.phase === "ended") return;
+    const r = realNow(); let dt = Math.min(0.1, r - S.lastReal); S.lastReal = r;
+    // fast-forward rate
+    if (S.ffTarget != null && S.phase === "running") {
+      const remain = S.ffTarget - S.sim;
+      if (remain <= 0.05) { S.ffTarget = null; S.rate = 1; const c = compressor(); if (c) say(c, "Ten seconds to two minutes"); renderActions(); }
+      else S.rate = Math.max(1, remain / Math.max(0.3, S.ffRealLeft)), S.ffRealLeft = Math.max(0.05, S.ffRealLeft - dt);
+    } else S.rate = 1;
+    const sdt = dt * (S.phase === "pause" ? 1 : S.rate);
+    S.sim += sdt;
+
+    // tasks
+    S.team.forEach(m => { if (m.task && m.task.dur && S.sim - m.task.start >= m.task.dur) finishTask(m); });
+
+    // compressions bookkeeping
+    const comp = compressingActive();
+    if (comp !== S.compressingLast) { if (!comp) S.stopReal = r; S.compressingLast = comp; }
+    if (S.phase === "running" && S.cycleStart != null && !comp) S.unattended += sdt;
+    const q = qualityNow(); if (q != null) S.lastQuality = q;
+    // ETCO2 changes over a few breaths: falls slowly during a pause, recovers within seconds
+    const tgt = etco2Target();
+    if (S.etco2Disp == null) S.etco2Disp = tgt;
+    const tau = S.phase === "pause" ? 30 : (tgt > S.etco2Disp ? 3 : 6);
+    S.etco2Disp += (tgt - S.etco2Disp) * (1 - Math.exp(-sdt / tau));
+    // a compressor who keeps going past about 2 minutes tires, and says so
+    const cc = compressor();
+    if (cc && S.phase === "running" && S.sim - cc.compressStart > 130 && cc.tiredFrom !== cc.compressStart) {
+      cc.tiredFrom = cc.compressStart; say(cc, "I'm getting tired", 3.5); log(cc.name + ": getting tired (compressing for over 2 minutes).");
+    }
+
+    // two-minute call
+    if (S.phase === "running" && S.cycleStart != null && !S.twoMinCalled && cycleTime() >= T.cycle) {
+      S.twoMinCalled = true; const c = compressor(); if (c) say(c, "Two minutes!", 3.5); log("Two minutes.");
+    }
+
+    // low ETCO2 tracking (only when the learner can see it)
+    const et = etco2Now();
+    if (S.capno && comp && S.phase === "running" && et <= 18) {
+      if (S.lowSince == null) S.lowSince = S.sim;
+      if (!S.lowPenalized && S.sim - S.lowSince > T.lowEtco2Grace) {
+        S.lowPenalized = true; score("BLS", P.lowEtco2Ignored, "ETCO₂ stayed at " + et + " mmHg for more than " + T.lowEtco2Grace + " s without troubleshooting compressions.");
+      }
+    } else if (et > 18) { S.lowSince = null; S.lowPenalized = false; }
+
+    // case limit
+    if (S.sim >= T.caseLimit) return endCase("timeout");
+
+    // pause countdown and pulse report
+    if (S.phase === "pause") updatePause(r);
+
+    drawMonitor(r);
+    renderScene(r);
+    renderTop();
+    if (!S._slow || r - S._slow > 0.25) { S._slow = r; renderRoster(); renderHint(); }
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- pause and check ----------
+  function startPause() {
+    if (S.phase !== "running" || S.cycleStart == null) return;
+    const k = S.cycle;
+    let rk = peaFor(k);
+    if (k === S.roscAtPause) {
+      if (!S.roscBlocked && S.lastQuality >= 18) rk = "rosc";
+      else S.roscAtPause = k + 1;   // inadequate compressions (or a wrong shock) delay ROSC
+    }
+    const prev = compressor();
+    S.pause = { k, rhythm: rk, real0: realNow(), simAt: S.sim, cycleLen: cycleTime(), prevCompressor: prev ? prev.id : null, dx: null, next: null, pulseSaid: false, shocked: false };
+    S.phase = "pause"; S.ffTarget = null; S.rate = 1; S.stopReal = realNow();
+    log("Pause and check after cycle " + k + " (" + Math.round(S.pause.cycleLen) + " s of compressions).", "pause");
+    renderActions();
+  }
+  function updatePause(r) {
+    const p = S.pause, el2 = r - p.real0;
+    if (!p.pulseSaid && el2 > 1.4) {
+      p.pulseSaid = true;
+      const checker = S.team.find(m => !m.task) || S.team.find(m => m.task && m.task.type !== "compress" && m.task.type !== "ventilate") || S.team.find(m => m.id !== p.prevCompressor) || S.team[0];
+      // the pulse report stays up until the pause ends
+      p.checker = checker.id;
+      say(checker, p.rhythm === "rosc" ? "I feel a pulse!" : "I don't feel a pulse", 1e6);
+      log(checker.name + ": " + (p.rhythm === "rosc" ? "pulse present." : "no pulse."));
+    }
+    const left = T.pauseBudget - el2;
+    const c = $("pcount");
+    if (c) { c.textContent = left >= 0 ? Math.ceil(left) + " s" : "+" + Math.floor(-left) + " s"; c.classList.toggle("over", left < 0); }
+  }
+  function shockNow() {
+    const p = S.pause; if (!S.charged || !p) return;
+    const shockable = (L.catOf(L.byKey(p.rhythm).cat) || {}).shockable;
+    S.shocks.push({ t: S.sim, J: S.charged.J, rhythm: p.rhythm, shockable });
+    if (!shockable) { S.roscBlocked = true; score("Defibrillation", P.shockNonShockable, "Shock delivered for a non-shockable rhythm (" + L.catOf(L.byKey(p.rhythm).cat).label + "). Shocking a non-shockable rhythm doesn't help and makes ROSC impossible in this case."); }
+    log("Clear! Shock delivered at " + S.charged.J + " J.", "shock");
+    S.charged = null; p.shocked = true;
+    const d = S.team.find(m => m.task && m.task.type === "charge") || S.team[0]; say(d, "Clear! Shocking");
+    renderActions();
+  }
+  function resume() {
+    const p = S.pause; if (!p || !p.dx) return;
+    const dur = realNow() - p.real0;
+    const ch = S.team.find(m => m.id === p.checker);
+    if (ch && ch.bubble && ch.bubble.until > 1e5) ch.bubble = null;   // clear the pulse report
+    const actual = L.byKey(p.rhythm).cat;
+    p.dur = dur; S.pauses.push(p);
+    const nextM = S.team.find(m => m.id === p.next);
+    log("Rhythm called: " + labelOf(p.dx) + " (pause " + p.k + ", " + dur.toFixed(1) + " s hands-off)" + (p.dx !== "rosc" && nextM ? ". " + nextM.name + (nextM.id === p.prevCompressor ? " continues compressions." : " takes over compressions.") : "."), "dx");
+    // ROSC outcomes end the case
+    if (actual === "rosc") {
+      if (p.dx === "rosc") { score("Rhythm & pauses", P.rosc, "ROSC recognized at pause " + p.k + "."); scorePauseTime(p); log("ROSC recognized."); return endCase("rosc"); }
+      score("Rhythm & pauses", 0, "Missed ROSC at pause " + p.k + ": the pulse checker reported a pulse, but it was called " + labelOf(p.dx) + ".");
+      log("A teammate stops you: there's a pulse. ROSC."); return endCase("rosc-missed");
+    }
+    if (p.dx === actual) score("Rhythm & pauses", P.correctRhythm, "Pause " + p.k + ": correctly diagnosed " + labelOf(actual) + ".");
+    else score("Rhythm & pauses", 0, "Pause " + p.k + ": called " + labelOf(p.dx) + ", but the rhythm was " + labelOf(actual) + (actual === "pea" ? " (organized complexes, no pulse)" : "") + ".");
+    scorePauseTime(p);
+    // compressor for the next cycle
+    const next = S.team.find(m => m.id === p.next);
+    if (next) {
+      if (next.id === p.prevCompressor) {
+        score("Rhythm & pauses", 0, "Pause " + p.k + ": " + next.name + " kept compressing. Rotate to a fresh compressor every cycle to avoid fatigue.");
+        S.pause = null; S.phase = "running";
+      } else {
+        score("Rhythm & pauses", P.rotation, "Pause " + p.k + ": rotated to a fresh compressor (" + next.name + ").");
+        const old = S.team.find(m => m.id === p.prevCompressor);
+        S.pause = null; S.phase = "running";
+        if (old) old.task = null;
+        next.compressStart = S.sim; assign(next, "compress");
+      }
+    } else { S.pause = null; S.phase = "running"; }
+    if (p.shocked) log("Compressions resumed immediately after the shock.");
+    S.cycle += 1; S.cycleStart = S.sim; S.twoMinCalled = false;
+    log("Cycle " + S.cycle + " started.");
+    renderActions(); renderRoster();
+  }
+  function scorePauseTime(p) {
+    if (p.dur <= T.pauseBudget) score("Rhythm & pauses", P.pauseUnder10, "Pause " + p.k + " took " + p.dur.toFixed(1) + " s (under 10 s).");
+    else score("Rhythm & pauses", Math.round((p.dur - T.pauseBudget)) * P.pauseOverPerSecond, "Pause " + p.k + " took " + p.dur.toFixed(1) + " s, " + (p.dur - T.pauseBudget).toFixed(1) + " s over the 10-second limit.");
+  }
+  const labelOf = k => (RHYTHM_CHOICES.find(r => r[0] === k) || [0, "unknown"])[1];
+
+  // ---------- end of case and scoring ----------
+  function endCase(outcome) {
+    S.phase = "ended"; S.outcome = outcome;
+    finalScoring();
+    showDebrief();
+  }
+  function finalScoring() {
+    // BLS start
+    if (S.firstCompressionAt == null) score("BLS", 0, "Compressions were never started.");
+    else {
+      const t = S.firstCompressionAt, pts = t <= 10 ? P.compressionsFast : t >= 30 ? 0 : Math.round(P.compressionsFast * (30 - t) / 20);
+      score("BLS", pts, "First compressions at " + t.toFixed(0) + " s" + (t <= 10 ? " (within 10 s)." : "."));
+    }
+    const cycle1End = S.cycleStart != null && S.pauses.length ? firstPauseSim() : S.sim;
+    const by1 = at => at != null && at <= cycle1End;
+    score("BLS", by1(S.ventStartAt) ? P.ventilationCycle1 : 0, by1(S.ventStartAt) ? "Ventilation started in the first cycle." : "Ventilation wasn't started in the first cycle.");
+    score("Monitoring & access", by1(S.ecgAt) ? P.ecgCycle1 : 0, by1(S.ecgAt) ? "ECG attached in the first cycle." : "ECG wasn't attached in the first cycle.");
+    score("Monitoring & access", by1(S.capnoAt) ? P.capnoCycle1 : 0, by1(S.capnoAt) ? "Capnograph connected in the first cycle." : "Capnograph wasn't connected in the first cycle.");
+    score("Monitoring & access", by1(S.ivAt) ? P.ivCycle1 : 0, by1(S.ivAt) ? "IV access confirmed in the first cycle." : "IV access wasn't ready by the end of the first cycle.");
+    // unattended compressions
+    if (S.unattended > 1) score("BLS", Math.max(P.unattendedCap, Math.round(S.unattended) * P.unattendedPerSecond), "Nobody was on compressions for " + Math.round(S.unattended) + " s during cycles.");
+    // drugs
+    const vaso = S.drugs.filter(d => SC.vasopressors.includes(d.key));
+    const firstDxPause = S.pauses.find(p => L.byKey(p.rhythm).cat !== "rosc");
+    const vasoCycles = [];
+    vaso.forEach(d => {
+      if (d.beforeDx) { score("Drugs", P.vasopressorBeforeDiagnosis, d.name + " given before any rhythm diagnosis (cycle " + d.cycle + "). Diagnose the rhythm first."); return; }
+      if (vasoCycles.includes(d.cycle - 1) || vasoCycles.includes(d.cycle)) score("Drugs", P.vasopressorConsecutive, d.name + " in cycle " + d.cycle + " came too soon after the previous vasopressor. Give vasopressors every other cycle.");
+      else score("Drugs", P.vasopressorOnTime, d.name + " given in cycle " + d.cycle + ".");
+      vasoCycles.push(d.cycle);
+    });
+    if (firstDxPause && vaso.filter(d => !d.beforeDx).length === 0) score("Drugs", 0, "No vasopressor was given. For a non-shockable rhythm, give epinephrine or vasopressin as soon as IV access is in, then every other cycle.");
+    const atro = S.drugs.filter(d => d.key === "atropine");
+    if (atro.length) {
+      if (!atro[0].beforeDx && atro[0].cycle <= 3) score("Drugs", P.atropineEarly, "Atropine given once, early (suggested by the algorithm).");
+      if (atro.length > 1) score("Drugs", P.notIndicated, "Atropine was repeated; the algorithm suggests it once.");
+    }
+    S.drugs.forEach(d => {
+      if (!SC.indicated.includes(d.key) && d.key !== "bicarbonate") score("Drugs", P.notIndicated, d.name + " isn't indicated in this case.");
+      if (d.key === "bicarbonate" && d.t < 15 * 60) score("Drugs", P.notIndicated, "Bicarbonate is considered only in prolonged CPR (over 15 minutes).");
+      if (d.mL != null) {
+        const c = correctDose(d.key);
+        if (c != null && Math.abs(d.mL - c) < 0.0051) score("Drugs", P.correctDose, d.name + " dose correct: " + d.mL + " mL.");
+        else if (c != null) {
+          const tenfold = Math.abs(d.mL - c * 10) < 0.01 || Math.abs(d.mL - c / 10) < 0.001;
+          score("Drugs", P.wrongDose, d.name + " dose " + d.mL + " mL; the chart dose for " + SC.weightKg + " kg is " + c + " mL" + (tenfold ? " (a tenfold error)." : "."));
+        }
+      }
+    });
+  }
+  function firstPauseSim() { const p = S.pauses[0]; return p ? p.simAt : S.sim; }
+
+  // ---------- rendering: top bar, hint, log ----------
+  function renderTop() {
+    $("clock").textContent = fmt(S.sim);
+    $("cycleNum").textContent = S.cycle || "–";
+    const ct = cycleTime();
+    $("cycleLeft").textContent = S.cycleStart == null ? "not started" : (S.phase === "pause" ? "paused" : (ct >= T.cycle ? "2:00 up" : fmt(T.cycle - ct) + " left"));
+    $("cycleBar").style.width = S.cycleStart == null ? "0%" : Math.min(100, ct / T.cycle * 100) + "%";
+    $("cycleBar").classList.toggle("due", ct >= T.cycle - T.fastForwardStopsBefore);
+    $("ffBadge").classList.toggle("hidden", !(S.ffTarget != null));
+    const pb = $("pauseBtn"); if (pb) pb.classList.toggle("pulse", S.phase === "running" && ct >= T.cycle - T.fastForwardStopsBefore);
+  }
+  // newest entries at the top; keeps the reader's place if they've scrolled back
+  const LOG_TAGS = { dx: "Rhythm", drug: "Drug", shock: "Shock", pause: "Pause" };
+  function logItem(e) {
+    const li = el("li", e.kind ? "k-" + e.kind : "");
+    li.appendChild(el("b", null, fmt(e.t)));
+    if (LOG_TAGS[e.kind]) li.appendChild(el("span", "ltag", LOG_TAGS[e.kind]));
+    li.appendChild(document.createTextNode(" " + e.msg));
+    return li;
+  }
+  function renderLog() {
+    const box = $("log"); if (!box || !S) return;
+    if (box.dataset.count === undefined || +box.dataset.count > S.log.length) { box.replaceChildren(); box.dataset.count = 0; }
+    const before = box.scrollHeight, top = box.scrollTop;
+    for (let i = +box.dataset.count; i < S.log.length; i++) box.insertBefore(logItem(S.log[i]), box.firstChild);
+    box.dataset.count = S.log.length;
+    if (top > 2) box.scrollTop = top + (box.scrollHeight - before);   // don't yank the view while reading history
+  }
+  function hintText() {
+    if (S.phase === "pause") {
+      if (!S.pause.dx) return "Name the rhythm: read the ECG and listen for the pulse report.";
+      if (S.pause.dx === "rosc") return "If there's a pulse, confirm ROSC.";
+      if (!S.pause.next) return "Pick who takes over compressions: a fresh teammate.";
+      return "Resume compressions now. Every second counts.";
+    }
+    const c = compressor(), v = ventilator(), busy = t => S.team.some(m => m.task && m.task.type === t);
+    if (!c) return "Nobody is on compressions. Tap a teammate, then choose Start compressions.";
+    if (!S.intubated && !busy("intubate")) return "Assign someone to intubate so ventilation can start.";
+    if (S.intubated && !v) return "Nobody is ventilating. Assign someone to ventilate.";
+    if (!S.ecg && !busy("ecg")) return "Attach the ECG leads so you can read the rhythm at the pause.";
+    if (S.intubated && !S.capno && !busy("capno")) return "Connect the capnograph to monitor compression quality.";
+    if (!S.iv && !busy("checkiv") && !busy("placeiv")) return "This patient already has an IV catheter: have someone check it.";
+    if (S.capno && etco2Now() <= 18) {
+      if (S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
+      return "ETCO₂ is " + etco2Now() + " mmHg (18 or below): troubleshoot compressions.";
+    }
+    const vaso = S.drugs.filter(d => SC.vasopressors.includes(d.key) && !d.beforeDx);
+    const nonShock = S.pauses.some(p => L.byKey(p.rhythm).cat !== "rosc");
+    const lastVaso = vaso.length ? vaso[vaso.length - 1].cycle : null;
+    if (nonShock && S.iv && !busy("drug")) {
+      if (lastVaso === S.cycle - 1) return "A vasopressor was given last cycle. Skip it this cycle: every other cycle.";
+      if (lastVaso !== S.cycle) return "Non-shockable rhythm and IV access: a vasopressor is due this cycle. Check the dosing chart for the dose.";
+    }
+    if (cycleTime() >= T.cycle - T.fastForwardStopsBefore) return "Two minutes: pause and check the rhythm and pulse.";
+    if (S.pauses.length === 0 && S.drugs.some(d => d.beforeDx)) return "Diagnose the rhythm before giving drugs.";
+    return "Everything's running. Tap Finish cycle to skip ahead to the end of the cycle.";
+  }
+  function renderHint() {
+    const h = $("hint"); if (!S.coached) { h.classList.add("hidden"); return; }
+    h.classList.remove("hidden"); h.textContent = hintText();
+  }
+
+  // ---------- rendering: roster ----------
+  function taskText(m) {
+    if (!m.task) return "Standing by";
+    const t = m.task, base = { compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
+    if (t.type === "compress") return base + " · " + fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "");
+    if (t.dur) return base + " · " + Math.min(99, Math.floor((S.sim - t.start) / t.dur * 100)) + "%";
+    return base;
+  }
+  function renderRoster() {
+    const box = $("roster"); if (!box || !S) return;
+    if (box.children.length !== S.team.length) {
+      box.replaceChildren();
+      S.team.forEach(m => {
+        const b = el("button", "member"); b.type = "button"; b.dataset.id = m.id;
+        const dot = el("span", "dot"); dot.style.background = m.shirt;
+        const n = el("span", "mname", m.name), st = el("span", "mtask");
+        const bar = el("span", "mbar"); bar.appendChild(el("i"));
+        b.append(dot, n, st, bar);
+        b.addEventListener("click", () => openTaskMenu(m.id));
+        box.appendChild(b);
+      });
+    }
+    S.team.forEach((m, i) => {
+      const b = box.children[i]; b.querySelector(".mtask").textContent = taskText(m);
+      const t = m.task, pct = t && t.dur ? Math.min(100, (S.sim - t.start) / t.dur * 100) : 0;
+      b.querySelector(".mbar").style.visibility = t && t.dur ? "visible" : "hidden";
+      b.querySelector(".mbar i").style.width = pct + "%";
+      b.classList.toggle("busy", !!t);
+      b.disabled = S.phase === "pause";
+    });
+  }
+
+  // ---------- rendering: actions / pause panel ----------
+  function renderActions() {
+    const box = $("actions"); if (!box || !S) return;
+    box.replaceChildren();
+    if (S.phase === "pause") return renderPausePanel(box);
+    const ct = cycleTime();
+    const ff = el("button", "btn ghost", "Finish cycle"); ff.disabled = !(S.cycleStart != null && ct < T.cycle - T.fastForwardStopsBefore - 1 && S.ffTarget == null);
+    ff.addEventListener("click", () => { S.ffTarget = S.cycleStart + T.cycle - T.fastForwardStopsBefore; S.ffRealLeft = T.fastForwardRealSeconds; renderActions(); });
+    const pause = el("button", "btn", "Pause and check"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
+    pause.addEventListener("click", startPause);
+    const tr = el("button", "btn ghost", "Troubleshoot compressions"); tr.disabled = !compressor();
+    tr.addEventListener("click", openCoaching);
+    const ch = el("button", "btn ghost", "Dosing chart"); ch.addEventListener("click", openChart);
+    box.append(pause, ff, tr, ch);
+  }
+  function renderPausePanel(box) {
+    const p = S.pause;
+    const head = el("div", "phead"); head.append(el("b", null, "Pause and check"), el("span", "pcount", "10 s")); head.lastChild.id = "pcount";
+    box.appendChild(head);
+    box.appendChild(el("p", "plabel", "1. Rhythm diagnosis"));
+    const rg = el("div", "pgrid");
+    RHYTHM_CHOICES.forEach(([k, lab]) => {
+      const b = el("button", "chip" + (p.dx === k ? " on" : ""), lab); b.type = "button";
+      b.addEventListener("click", () => { p.dx = k; renderActions(); });
+      rg.appendChild(b);
+    });
+    box.appendChild(rg);
+    if (p.dx !== "rosc") {
+      box.appendChild(el("p", "plabel", "2. Who takes over compressions?"));
+      const cg = el("div", "pgrid");
+      S.team.forEach(m => {
+        const b = el("button", "chip" + (p.next === m.id ? " on" : "")); b.type = "button";
+        const d = el("span", "dot"); d.style.background = m.shirt;
+        b.append(d, document.createTextNode(m.name + (m.id === p.prevCompressor ? " (same)" : "")));
+        b.addEventListener("click", () => { p.next = m.id; renderActions(); });
+        cg.appendChild(b);
+      });
+      box.appendChild(cg);
+    }
+    const row = el("div", "prow");
+    if (S.charged && !p.shocked) { const sb = el("button", "btn shock", "Shock (" + S.charged.J + " J)"); sb.addEventListener("click", shockNow); row.appendChild(sb); }
+    const go = el("button", "btn", p.dx === "rosc" ? "Confirm ROSC" : "Resume compressions");
+    go.disabled = !p.dx || (p.dx !== "rosc" && !p.next);
+    go.addEventListener("click", resume);
+    row.appendChild(go);
+    box.appendChild(row);
+    updatePause(realNow());
+  }
+
+  // ---------- modals ----------
+  let dismissModal = null;   // what Escape / the backdrop do for the open dialog
+  function modal(title, bodyFn, opts) {
+    closeModal();
+    opts = opts || {};
+    const wrap = el("div", "modal"); wrap.id = "modal";
+    const card = el("div", "mcard" + (opts.wide ? " wide" : ""));
+    const hd = el("div", "mhead" + (opts.back ? " left" : ""));
+    dismissModal = opts.back || closeModal;
+    if (opts.back) {
+      const bk = el("button", "mback", "\u2190 " + (opts.backLabel || "Back")); bk.type = "button"; bk.addEventListener("click", opts.back);
+      hd.append(bk, el("b", null, title));
+    } else {
+      hd.append(el("b", null, title));
+      const x = el("button", "mclose", "×"); x.type = "button"; x.setAttribute("aria-label", "Close"); x.addEventListener("click", closeModal); hd.appendChild(x);
+    }
+    const body = el("div", "mbody"); bodyFn(body);
+    card.append(hd, body); wrap.appendChild(card);
+    wrap.addEventListener("click", e => { if (e.target === wrap) dismissModal(); });
+    document.body.appendChild(wrap);
+  }
+  function closeModal() { const m = $("modal"); if (m) m.remove(); dismissModal = null; }
+
+  function openTaskMenu(id) {
+    if (S.phase !== "running") return;
+    const m = S.team.find(x => x.id === id);
+    modal(m.name + ": what should they do?", body => {
+      const cur = el("p", "muted small", "Currently: " + taskText(m)); body.appendChild(cur);
+      const opts = [];
+      opts.push(["compress", "Start compressions", "Chest", true]);
+      if (!S.intubated) opts.push(["intubate", "Intubate", T.tasks.intubate + " s", !S.team.some(x => x.task && x.task.type === "intubate")]);
+      else opts.push(["ventilate", "Ventilate every 6 s", "Head", true]);
+      if (!S.ecg) opts.push(["ecg", "Attach ECG leads", T.tasks.ecg + " s", true]);
+      if (!S.capno) opts.push(["capno", "Connect capnograph", S.intubated ? T.tasks.capno + " s" : "needs intubation", S.intubated]);
+      if (!S.iv) { if (SC.hasIV) opts.push(["checkiv", "Check the IV catheter", T.tasks.checkiv + " s", true]); opts.push(["placeiv", "Place a new IV catheter", T.tasks.placeiv + " s", true]); }
+      opts.push(["drug", "Give a drug…", S.iv ? T.tasks.drug + " s" : "needs IV access", S.iv]);
+      opts.push(["charge", "Charge the defibrillator…", T.tasks.charge + " s", true]);
+      opts.push(["idle", "Stand by", "", true]);
+      const list = el("div", "tlist");
+      opts.forEach(([type, label, meta, ok]) => {
+        const b = el("button", "titem"); b.type = "button"; b.disabled = !ok;
+        b.append(el("span", null, label), el("small", null, meta));
+        b.addEventListener("click", () => {
+          if (type === "drug") return openDrug(m);
+          if (type === "charge") return openCharge(m);
+          closeModal(); assign(m, type);
+        });
+        list.appendChild(b);
+      });
+      body.appendChild(list);
+      if (m.task && m.task.type === "compress") body.appendChild(el("p", "warn small", "Giving " + m.name + " another task stops compressions."));
+      if (m.task && m.task.type === "ventilate") body.appendChild(el("p", "warn small", "Giving " + m.name + " another task stops ventilation."));
+    });
+  }
+
+  function openDrug(m, keep) {
+    keep = keep || {};
+    modal("Give a drug (" + m.name + ")", body => {
+      body.appendChild(el("p", "muted small", "Patient: " + SC.weightKg + " kg " + SC.species + ". Type the volume to draw up, using the dosing chart."));
+      const sel = el("div", "dgrid"); let chosen = null;
+      const all = D.drugs.map(d => ({ key: d.key, name: d.name.replace("*", ""), conc: d.conc })).concat([{ key: "bicarbonate", name: "Sodium bicarbonate", conc: "no dose needed" }]);
+      const dose = el("input"); dose.type = "text"; dose.inputMode = "decimal"; dose.placeholder = "mL"; dose.className = "dose";
+      const go = el("button", "btn", "Give"); go.disabled = true;
+      const err = el("p", "warn small");
+      all.forEach(d => {
+        const b = el("button", "chip"); b.type = "button";
+        b.append(el("span", null, d.name), el("small", null, d.conc));
+        b.addEventListener("click", () => {
+          chosen = d; sel.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b));
+          dose.disabled = d.key === "bicarbonate"; if (dose.disabled) dose.value = "";
+          go.disabled = false; if (!dose.disabled) dose.focus();
+        });
+        sel.appendChild(b);
+      });
+      body.appendChild(sel);
+      const row = el("div", "drow"); const lab = el("label", null, "Volume ");
+      lab.appendChild(dose); lab.appendChild(document.createTextNode(" mL"));
+      const chart = el("button", "btn ghost sm", "Dosing chart"); chart.type = "button";
+      chart.addEventListener("click", () => { const k = { key: chosen && chosen.key, mL: dose.value }; openChart(() => openDrug(m, k), "Back to the drug"); });
+      // restore a previous choice (after looking at the chart)
+      if (keep.key) { const i = all.findIndex(d => d.key === keep.key); if (i >= 0) sel.children[i].click(); }
+      if (keep.mL) dose.value = keep.mL;
+      row.append(lab, chart); body.append(row, err);
+      go.addEventListener("click", () => {
+        let mL = null;
+        if (chosen.key !== "bicarbonate") {
+          mL = parseFloat(String(dose.value).replace(",", "."));
+          if (!(mL > 0)) { err.textContent = "Type the volume in mL."; return; }
+        }
+        closeModal(); assign(m, "drug", { key: chosen.key, name: chosen.name, mL });
+      });
+      dose.addEventListener("keydown", e => { if (e.key === "Enter") go.click(); });
+      body.appendChild(go);
+    });
+  }
+
+  function openCharge(m, keep) {
+    keep = keep || {};
+    modal("Charge the defibrillator (" + m.name + ")", body => {
+      body.appendChild(el("p", "muted small", "Biphasic defibrillator. Patient: " + SC.weightKg + " kg. Type the energy in joules."));
+      const j = el("input"); j.type = "text"; j.inputMode = "numeric"; j.className = "dose"; j.placeholder = "J";
+      const row = el("div", "drow"); const lab = el("label", null, "Energy "); lab.append(j, document.createTextNode(" J"));
+      const chart = el("button", "btn ghost sm", "Dosing chart"); chart.type = "button";
+      chart.addEventListener("click", () => { const k = { J: j.value }; openChart(() => openCharge(m, k), "Back to the defibrillator"); });
+      if (keep.J) j.value = keep.J;
+      row.append(lab, chart); body.appendChild(row);
+      const err = el("p", "warn small"); body.appendChild(err);
+      const go = el("button", "btn", "Charge");
+      go.addEventListener("click", () => { const J = parseFloat(j.value); if (!(J > 0)) { err.textContent = "Type the energy in joules."; return; } closeModal(); assign(m, "charge", { J }); });
+      j.addEventListener("keydown", e => { if (e.key === "Enter") go.click(); });
+      body.appendChild(go); setTimeout(() => j.focus(), 50);
+    });
+  }
+
+  function openCoaching() {
+    const c = compressor(); if (!c) return;
+    // a question not asked yet this case, if possible
+    const pool = window.COACHING.map((q, i) => i).filter(i => !S.coachingAsked.includes(i));
+    const qi = (pool.length ? pool : window.COACHING.map((q, i) => i))[Math.floor(Math.random() * (pool.length || window.COACHING.length))];
+    S.coachingAsked.push(qi);
+    const Q = window.COACHING[qi];
+    const opts = Q.options.map(o => o.slice()).sort(() => Math.random() - 0.5);
+    modal("Coach " + c.name + " on compressions", body => {
+      body.appendChild(el("p", "qtext", Q.q));
+      body.appendChild(el("p", "muted small", "Select all that apply."));
+      const list = el("div", "qlist"); const picked = new Set();
+      opts.forEach((o, i) => {
+        const b = el("button", "qopt"); b.type = "button"; b.append(el("span", "box"), el("span", null, o[0]));
+        b.addEventListener("click", () => { if (b.disabled) return; picked.has(i) ? picked.delete(i) : picked.add(i); b.classList.toggle("on"); });
+        list.appendChild(b);
+      });
+      body.appendChild(list);
+      const fb = el("p", "qfb"); body.appendChild(fb);
+      const go = el("button", "btn", "Tell " + c.name);
+      let answered = false;
+      go.addEventListener("click", () => {
+        if (answered) return closeModal();
+        answered = true;
+        const ok = opts.every((o, i) => o[1] === picked.has(i));
+        list.querySelectorAll(".qopt").forEach((b, i) => { b.disabled = true; if (opts[i][1]) b.classList.add("right"); else if (picked.has(i)) b.classList.add("wrong"); });
+        S.lowSince = null; S.lowPenalized = false;
+        if (ok) { c.poorTech = false; score("BLS", P.coachingCorrect, "Coaching question answered correctly: " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
+        else { score("BLS", 0, "Coaching question missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + "."); fb.textContent = "Not quite: the correct answer is highlighted. " + c.name + "'s technique hasn't changed. Try again or swap compressors."; fb.className = "qfb bad"; }
+        go.textContent = "Back to the case";
+      });
+      body.appendChild(go);
+    });
+  }
+
+  function openChart(back, backLabel) {
+    const highlight = -1;   // never highlight: learners look up the patient's weight themselves
+    modal("CPR Dosing Chart for Dogs and Cats", body => {
+      const wrap = el("div", "chartwrap"); const t = el("table", "chart");
+      const hr = el("tr"); hr.append(el("th", "lefth", "Drug"), el("th", "lefth", "Dose"));
+      DOSING.weights.forEach((w, i) => { const th = el("th", i === highlight ? "hl" : "", w + " kg"); hr.appendChild(th); });
+      t.appendChild(hr);
+      let group = null;
+      DOSING.drugs.forEach(d => {
+        if (d.group !== group) { group = d.group; const gr = el("tr", "grp"); const td = el("td", null, group); td.colSpan = 2 + DOSING.weights.length; gr.appendChild(td); t.appendChild(gr); }
+        const tr = el("tr"); const n = el("td", "lefth"); n.append(el("b", null, d.name), el("small", null, d.conc));
+        tr.append(n, el("td", "lefth", d.dose));
+        d.mL.forEach((v, i) => tr.appendChild(el("td", i === highlight ? "hl" : "", String(v))));
+        t.appendChild(tr);
+      });
+      const gr = el("tr", "grp"); const gtd = el("td", null, "Biphasic defibrillation"); gtd.colSpan = 2 + DOSING.weights.length; gr.appendChild(gtd); t.appendChild(gr);
+      DOSING.defib.forEach(d => { const tr = el("tr"); tr.append(el("td", "lefth", d.name), el("td", "lefth", d.dose)); d.J.forEach((v, i) => tr.appendChild(el("td", i === highlight ? "hl" : "", v + " J"))); t.appendChild(tr); });
+      wrap.appendChild(t); body.appendChild(wrap);
+      body.appendChild(el("p", "muted small", "Volumes in mL. " + DOSING.footnote + ". If a weight falls between two columns, use the next higher weight."));
+      body.appendChild(el("p", "muted small", DOSING.credit));
+    }, { wide: true, back: back || null, backLabel });
+  }
+
+  // ---------- scene ----------
+  let sceneBuilt = false;
+  function buildScene() {
+    const back = $("layerBack"), front = $("layerFront"), bub = $("layerBubbles");
+    back.replaceChildren(); front.replaceChildren(); bub.replaceChildren();
+    S.team.forEach(m => {
+      const gb = svgEl("g", { class: "fig", id: "fb-" + m.id }), ib = svgEl("g", { class: "anim" });
+      ib.append(svgEl("rect", { x: -18, y: 176, width: 14, height: 92, rx: 6, fill: "#022033" }), svgEl("rect", { x: 4, y: 176, width: 14, height: 92, rx: 6, fill: "#022033" }),
+        svgEl("rect", { x: -26, y: 66, width: 52, height: 112, rx: 16, fill: m.shirt, class: "torso" }), svgEl("circle", { cx: 0, cy: 44, r: 18, fill: "#022033" }));
+      const tag = svgEl("g", {}); const tw = m.name.length * 8 + 16;
+      tag.append(svgEl("rect", { x: -tw / 2, y: 2, width: tw, height: 18, rx: 9, fill: "#fff", stroke: m.shirt, "stroke-width": 3 }));
+      const tt = svgEl("text", { x: 0, y: 15.5, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#022033", "font-family": "Source Sans 3, Arial, sans-serif" }); tt.textContent = m.name; tag.appendChild(tt);
+      ib.appendChild(tag);
+      const pb = svgEl("g", { class: "pbar" }); pb.append(svgEl("rect", { x: -22, y: 24, width: 44, height: 5, rx: 2.5, fill: "#e6e6e6" }), svgEl("rect", { x: -22, y: 24, width: 0, height: 5, rx: 2.5, fill: "#022033", class: "pfill" }));
+      ib.appendChild(pb);
+      gb.appendChild(ib); back.appendChild(gb);
+      const gf = svgEl("g", { class: "fig", id: "ff-" + m.id }), iff = svgEl("g", { class: "anim arms" });
+      gf.appendChild(iff); front.appendChild(gf);
+      const gbub = svgEl("g", { class: "fig bub", id: "bb-" + m.id }); bub.appendChild(gbub);
+      // tapping the avatar (body, arms or name tag) opens the same task menu as the roster card
+      gb.setAttribute("tabindex", "0"); gb.setAttribute("role", "button"); gb.setAttribute("aria-label", "Give " + m.name + " a task");
+      [gb, gf].forEach(g => {
+        g.classList.add("figbtn");
+        g.addEventListener("click", () => openTaskMenu(m.id));
+        g.addEventListener("mouseenter", () => gb.classList.add("hover"));
+        g.addEventListener("mouseleave", () => gb.classList.remove("hover"));
+      });
+      gb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTaskMenu(m.id); } });
+    });
+    sceneBuilt = true;
+  }
+  function stationOf(m) {
+    if (!m.task) return null;
+    return TASKS[m.task.type] ? TASKS[m.task.type].station : null;
+  }
+  function armsFor(pose) {
+    const a = 'stroke="#022033" stroke-width="10" stroke-linecap="round" fill="none"';
+    if (pose === "chest") return '<path ' + a + ' d="M-13 82 L -5 154 M 9 82 L 5 154"/><rect x="-13" y="152" width="26" height="12" rx="6" fill="#022033"/>';
+    if (pose === "ventilate") return '<path ' + a + ' d="M-13 84 L -30 168 M 12 84 L 18 150"/><g class="bag"><ellipse cx="-36" cy="176" rx="11" ry="7" fill="#84d1f5" stroke="#022033" stroke-width="2"/></g>';
+    if (pose === "intubate") return '<path ' + a + ' d="M-13 84 L -32 172 M 12 84 L -16 174"/>';
+    if (pose === "cart") return '<path ' + a + ' d="M-12 84 L -22 196 M 12 84 L 22 196"/>';
+    return '<path ' + a + ' d="M-24 80 L -30 150 M 24 80 L 30 150"/>';
+  }
+  function renderScene(r) {
+    if (!sceneBuilt) buildScene();
+    const idleList = S.team.filter(m => !stationOf(m));
+    S.team.forEach(m => {
+      const st = stationOf(m);
+      const x = st ? STATION_X[st] : IDLE_X[idleList.indexOf(m)];
+      const tf = "translate(" + x + "px, 0px)";
+      ["fb-", "ff-", "bb-"].forEach(p => { const g = $(p + m.id); if (g.style.transform !== tf) g.style.transform = tf; });
+      const pose = !m.task ? "idle" : m.task.type === "compress" ? "chest" : m.task.type === "ventilate" ? "ventilate" : m.task.type === "intubate" ? "intubate" : "cart";
+      const arms = $("ff-" + m.id).firstChild;
+      if (arms.dataset.pose !== pose) { arms.dataset.pose = pose; arms.innerHTML = armsFor(pose); }
+      const pushing = pose === "chest" && S.phase === "running";
+      [$("fb-" + m.id).firstChild, arms].forEach(g => { g.classList.toggle("pushing", pushing); g.style.animationDuration = pushing ? (0.545 / Math.min(6, S.rate)) + "s" : ""; });
+      arms.classList.toggle("bagging", pose === "ventilate");
+      const bag = arms.querySelector(".bag"); if (bag) bag.style.animationDuration = (6 / Math.min(12, S.rate)) + "s";
+      // progress bar
+      const pb = $("fb-" + m.id).querySelector(".pbar"), t = m.task;
+      pb.style.display = t && t.dur ? "" : "none";
+      if (t && t.dur) pb.querySelector(".pfill").setAttribute("width", 44 * Math.min(1, (S.sim - t.start) / t.dur));
+      // speech bubble (positioned after the loop so overlapping bubbles can be stacked)
+      m._x = x;
+    });
+    // speech bubbles: stack any that would overlap a neighbor's
+    const vis = S.team.filter(m => m.bubble && r < m.bubble.until).sort((a, b) => a._x - b._x);
+    const placed = [];
+    S.team.forEach(m => { if (!vis.includes(m)) { const bg = $("bb-" + m.id); bg.style.opacity = 0; bg.dataset.key = ""; } });
+    vis.forEach(m => {
+      const text = m.bubble.text, w = Math.max(60, text.length * 7.2 + 20), x = m._x;
+      const left = Math.min(Math.max(-w / 2, -x + 4), 800 - x - w - 4), absL = x + left, absR = absL + w;
+      let level = 0; while (placed.some(p => p.level === level && absL < p.r + 6 && absR > p.l - 6)) level++;
+      placed.push({ l: absL, r: absR, level });
+      const y = -52 - level * 34, bg = $("bb-" + m.id), key = text + "|" + level;
+      if (bg.dataset.key !== key) {
+        bg.dataset.key = key;
+        const tail = level === 0 ? '<path d="M-6 ' + (y + 27) + ' L 0 ' + (y + 38) + ' L 6 ' + (y + 27) + '" fill="#fff" stroke="#022033" stroke-width="2"/><rect x="-7" y="' + (y + 25) + '" width="14" height="4" fill="#fff"/>' : '<path d="M0 ' + (y + 28) + ' V ' + (y + 64) + '" stroke="#022033" stroke-width="1.5" stroke-dasharray="3 3"/>';
+        bg.innerHTML = '<rect x="' + left + '" y="' + y + '" width="' + w + '" height="28" rx="12" fill="#fff" stroke="#022033" stroke-width="2"/>' + tail + '<text x="' + (left + w / 2) + '" y="' + (y + 19) + '" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="700" font-size="13" fill="#022033"></text>';
+        bg.querySelector("text").textContent = text;
+      }
+      bg.style.opacity = 1;
+    });
+    $("dog").classList.toggle("compressing", compressingActive());
+    $("dog").style.setProperty("--push", (0.545 / Math.min(6, S.rate)) + "s");
+  }
+
+  // ---------- monitor: ECG and ETCO2 with sample buffers ----------
+  const ECG_HZ = 250, ECG_N = ECG_HZ * 6, ecgVal = new Float32Array(ECG_N), ecgStamp = new Int32Array(ECG_N).fill(-1);
+  const CO2_HZ = 50, CO2_WIN = 12, CO2_N = CO2_HZ * CO2_WIN, co2Val = new Float32Array(CO2_N), co2Stamp = new Int32Array(CO2_N).fill(-1);
+  let ecgM = null, ecgLastIdx = -1, co2LastIdx = -1, hrNext = 0, hrShown = "---", co2Real0 = null;
+  function sizeMonitor() {
+    ecgM = Monitor.setup($("ecg"));
+    const c = $("co2"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function ecgSignal(tRel, r) {
+    if (compressingActive()) return L.compressionArtifact(tRel, S.artSeed);
+    const since = r - S.stopReal;
+    const rh = rhythm();
+    const v = rh.fn(Math.max(0, since), S.variant);
+    if (since < 0.06) return v + L.compressionArtifact(tRel, S.artSeed) * (1 - since / 0.06) * 0.3;
+    return v;
+  }
+  function drawMonitor(r) {
+    // ECG
+    $("ecgOff").classList.toggle("hidden", S.ecg);
+    if (S.ecg) {
+      if (!ecgM) sizeMonitor();
+      const tNow = r - S.ecgReal0, idxNow = Math.floor(tNow * ECG_HZ);
+      for (let i = Math.max(ecgLastIdx + 1, idxNow - ECG_N + 1); i <= idxNow; i++) { const slot = ((i % ECG_N) + ECG_N) % ECG_N; ecgVal[slot] = ecgSignal(i / ECG_HZ, r); ecgStamp[slot] = i; }
+      ecgLastIdx = idxNow;
+      Monitor.sweep(ecgM, t => { const i = Math.floor(t * ECG_HZ), slot = ((i % ECG_N) + ECG_N) % ECG_N; return ecgStamp[slot] === i ? ecgVal[slot] : null; }, tNow);
+      // HR
+      let hr = "---";
+      if (!compressingActive()) {
+        const rh = rhythm(), mode = L.hrMode(rh), since = r - S.stopReal;
+        if (since >= L.hrDelay(rh)) {
+          if (mode === "zero") hr = "0";
+          else if (mode === "rate") { if (r > hrNext || hrShown === "---") { hrShown = String(rh.rate + Math.round((Math.random() * 2 - 1) * (rh.rate < 60 ? 1 : 2))); hrNext = r + 2; } hr = hrShown; }
+        }
+      } else hrShown = "---";
+      $("hrVal").textContent = hr;
+    } else $("hrVal").textContent = "---";
+    // ETCO2
+    const cv = $("co2"), ctx = cv.getContext("2d"), w = cv.clientWidth, h = cv.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    $("co2Off").classList.toggle("hidden", S.capno);
+    if (!S.capno) { $("co2Val").textContent = "--"; return; }
+    if (co2Real0 == null) co2Real0 = r;
+    const vent = ventilator(), et = etco2Now(), tNow = r - co2Real0, idxNow = Math.floor(tNow * CO2_HZ);
+    const breath = 6 / Math.min(12, S.rate);
+    for (let i = Math.max(co2LastIdx + 1, idxNow - CO2_N + 1); i <= idxNow; i++) {
+      // one breath every 6 s (compressed during fast-forward); s = seconds into the breath on a 6-s scale
+      const slot = i % CO2_N, tt = i / CO2_HZ, sec = (tt % breath) / breath * 6; let v = 0;
+      if (vent && S.phase !== "ended") {
+        if (sec < 1.0) v = 0;                                          // inspiration
+        else if (sec < 1.2) v = et * (sec - 1.0) / 0.2;                // expiratory upstroke
+        else if (sec < 2.7) v = et * (0.96 + 0.04 * (sec - 1.2) / 1.5); // alveolar plateau (~1.5 s)
+        else if (sec < 2.9) v = et * (1 - (sec - 2.7) / 0.2);          // back to zero
+        else v = 0;                                                    // zero until the next exhalation
+      }
+      co2Val[slot] = v; co2Stamp[slot] = i;
+    }
+    co2LastIdx = idxNow;
+    // grid
+    ctx.strokeStyle = "rgba(132,209,245,.18)"; ctx.lineWidth = 1; ctx.beginPath();
+    [10, 20, 30, 40].forEach(mm => { const y = h - 6 - mm / 50 * (h - 12); ctx.moveTo(0, y); ctx.lineTo(w, y); }); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = '600 10px "Source Sans 3", Arial'; ctx.fillText("CO₂ 0–50 mmHg", 6, 12);
+    const y18 = h - 6 - 18 / 50 * (h - 12); ctx.strokeStyle = "rgba(238,60,54,.5)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, y18); ctx.lineTo(w, y18); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = "#f2b134"; ctx.lineWidth = 2; ctx.beginPath(); let pen = false;
+    const phase = tNow % CO2_WIN, sweepN = Math.floor(tNow / CO2_WIN);
+    for (let x = 0; x <= w; x++) {
+      const s = x / w * CO2_WIN; let t;
+      if (s <= phase) t = sweepN * CO2_WIN + s; else if (s > phase + 0.3) t = (sweepN - 1) * CO2_WIN + s; else { pen = false; continue; }
+      const i = Math.floor(t * CO2_HZ); if (i < 0) { pen = false; continue; }
+      const slot = i % CO2_N; if (co2Stamp[slot] !== i) { pen = false; continue; }
+      const y = h - 6 - co2Val[slot] / 50 * (h - 12);
+      if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    const shown = vent ? Math.round(et + Math.sin(r * 0.7) * 0.6) : "--";
+    $("co2Val").textContent = shown;
+    $("co2Box").classList.toggle("low", vent && S.phase === "running" && et <= 18);
+  }
+
+  // ---------- debrief ----------
+  function showDebrief() {
+    closeModal();
+    $("screen-game").classList.add("hidden"); $("screen-end").classList.remove("hidden"); window.scrollTo(0, 0);
+    const total = S.events.reduce((s, e) => s + e.pts, 0);
+    $("endTitle").textContent = S.outcome === "rosc" ? "ROSC achieved" : S.outcome === "rosc-missed" ? "ROSC, but it was missed" : "Case ended without ROSC";
+    $("endSub").textContent = S.outcome === "rosc" ? "Your team got a pulse back at " + fmt(S.sim) + "." : S.outcome === "rosc-missed" ? "The patient had a pulse at the pause, but it was called something else." : "The case reached the " + (T.caseLimit / 60) + "-minute limit.";
+    $("finalScore").textContent = total.toLocaleString();
+    // categories
+    const cats = ["BLS", "Monitoring & access", "Rhythm & pauses", "Drugs", "Defibrillation"];
+    const cbox = $("cats"); cbox.replaceChildren();
+    cats.forEach(c => { const pts = S.events.filter(e => e.cat === c).reduce((s, e) => s + e.pts, 0); if (!S.events.some(e => e.cat === c)) return; const d = el("div", "cat"); d.append(el("b", null, (pts > 0 ? "+" : "") + pts), el("span", null, c)); cbox.appendChild(d); });
+    // metrics
+    const mbox = $("metrics"); mbox.replaceChildren();
+    const metric = (k, v) => { const d = el("div", "metric"); d.append(el("span", null, k), el("b", null, v)); mbox.appendChild(d); };
+    metric("Time to first compression", S.firstCompressionAt == null ? "never" : S.firstCompressionAt.toFixed(0) + " s");
+    metric("Pauses", S.pauses.length ? S.pauses.map(p => p.dur.toFixed(1) + " s").join(" · ") : "none");
+    metric("Compressor rotated", S.pauses.filter(p => p.next && p.next !== p.prevCompressor).length + " of " + S.pauses.filter(p => p.dx !== "rosc").length + " pauses");
+    metric("Unattended compressions", Math.round(S.unattended) + " s");
+    metric("Drugs given", S.drugs.length ? S.drugs.map(d => d.name + (d.mL != null ? " " + d.mL + " mL" : "") + " (cycle " + d.cycle + ")").join(" · ") : "none");
+    // went well / improve
+    const good = $("good"), bad = $("bad"); good.replaceChildren(); bad.replaceChildren();
+    S.events.forEach(e => { const li = el("li"); li.append(el("b", null, (e.pts > 0 ? "+" : "") + e.pts), document.createTextNode(" " + e.msg)); (e.pts > 0 ? good : bad).appendChild(li); });
+    if (!good.children.length) good.appendChild(el("li", null, "Nothing scored yet. Try again in coached mode."));
+    if (!bad.children.length) bad.appendChild(el("li", null, "No errors. Excellent leadership."));
+    // timeline
+    const tl = $("timeline"); tl.replaceChildren();
+    S.log.forEach(e => { const li = el("li"); li.append(el("b", null, fmt(e.t)), document.createTextNode(" " + e.msg)); tl.appendChild(li); });
+  }
+
+  // ---------- start ----------
+  function start(coached) {
+    S = newState(coached);
+    sceneBuilt = false; ecgM = null; ecgLastIdx = -1; co2LastIdx = -1; co2Real0 = null; ecgStamp.fill(-1); co2Stamp.fill(-1);
+    $("screen-intro").classList.add("hidden"); $("screen-end").classList.add("hidden"); $("screen-game").classList.remove("hidden");
+    $("modeTag").textContent = coached ? "Coached mode" : "Standard mode";
+    $("roster").replaceChildren(); $("log").replaceChildren(); delete $("log").dataset.count;
+    renderActions(); renderRoster(); renderHint();
+    requestAnimationFrame(() => { sizeMonitor(); S.lastReal = realNow(); requestAnimationFrame(tick); });
+    log("Case started. " + SC.team.map(m => m.name).join(", ") + " are waiting for your orders.");
+  }
+
+  window.TeamLeader = {
+    start, get state() { return S; },
+    _debug: { compressor, ventilator, etco2Now, etco2Target, rhythmKeyNow, startPause, resume, endCase }
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    $("scTitle").textContent = SC.title; $("scSub").textContent = SC.subtitle; $("scSummary").textContent = SC.summary;
+    const chips = $("scTeam"); SC.team.forEach(t => { const c = el("span", "tchip"); const d = el("span", "dot"); d.style.background = t.shirt; c.append(d, document.createTextNode(t.name)); chips.appendChild(c); });
+    $("startStd").addEventListener("click", () => start(false));
+    $("startCoach").addEventListener("click", () => start(true));
+    $("againStd").addEventListener("click", () => start(false));
+    $("againCoach").addEventListener("click", () => start(true));
+    $("toIntro").addEventListener("click", () => { $("screen-end").classList.add("hidden"); $("screen-intro").classList.remove("hidden"); });
+    $("chartTop").addEventListener("click", () => openChart());
+    let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (S && S.phase !== "ended") { sizeMonitor(); ecgStamp.fill(-1); ecgLastIdx = -1; } }, 150); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && dismissModal) dismissModal(); });
+  });
+})();
+
+</script>
+</body>
+</html>
