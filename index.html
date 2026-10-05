@@ -905,7 +905,8 @@ window.SCENARIO = {
   hasIV: true,
   poorTechniqueFirstCompressor: true,      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
   peaSequence: ["pea94n", "pea38w", "pea60w"], // rhythm found at pause 1, 2, 3 (and after)
-  roscAtPause: [3, 4],                     // chosen at random each play
+  roscAtPause: [4],                        // fixed, so every learner gets the same 4 cycles and the same chances to score
+                                           // (ROSC happens at a random point within cycle 4; it comes later only if the learner's own errors delay it)
   indicated: ["epinephrine", "vasopressin", "atropine"],
   vasopressors: ["epinephrine", "vasopressin"]
 };
@@ -1160,14 +1161,15 @@ window.SCENARIO = {
     if (S.phase !== "running" || S.cycleStart == null) return;
     const k = S.cycle;
     let rk = peaFor(k);
+    let noRoscReason = null;
     if (k === S.roscAtPause) {
       if (!S.roscBlocked && S.lastQuality >= 18 && cycleTime() >= S.roscAtSec) rk = "rosc";
-      else S.roscAtPause = k + 1;   // ROSC hadn't happened yet (paused early, poor compressions, or a wrong shock)
+      else noRoscReason = S.roscBlocked ? "shock" : S.lastQuality < 18 ? "compressions" : "early";
     }
     const prev = compressor();
     const palp = S.team.find(m => m.task && m.task.type === "palpate");
     S.pause = { k, rhythm: rk, real0: realNow(), simAt: S.sim, cycleLen: cycleTime(), prevCompressor: prev ? prev.id : null, dx: null, next: null, shocked: false,
-                pulseReady: !!palp, pulseChecked: false, pulseBy: null, afterRoscRise: S.roscOnsetSim != null && rk === "rosc" };
+                pulseReady: !!palp, pulseChecked: false, pulseBy: null, afterRoscRise: S.roscOnsetSim != null && rk === "rosc", noRoscReason };
     if (palp) palp.pulseReportAt = realNow() + 1.2;
     S.phase = "pause"; S.ffTarget = null; S.rate = 1; S.stopReal = realNow();
     log("Pause and check after cycle " + k + " (" + Math.round(S.pause.cycleLen) + " s of compressions).", "pause");
@@ -1226,6 +1228,11 @@ window.SCENARIO = {
         next.compressStart = S.sim; assign(next, "compress");
       }
     } else { S.pause = null; S.phase = "running"; }
+    if (p.k >= S.roscAtPause) {          // every learner gets the same number of cycles
+      S.noRoscReason = p.noRoscReason;
+      log("The case ends after cycle " + p.k + " without ROSC.");
+      return endCase("no-rosc");
+    }
     if (p.shocked) log("Compressions resumed immediately after the shock.");
     S.cycle += 1; S.cycleStart = S.sim; S.twoMinCalled = false;
     log("Cycle " + S.cycle + " started.");
@@ -1847,8 +1854,13 @@ window.SCENARIO = {
     closeModal();
     $("screen-game").classList.add("hidden"); $("screen-end").classList.remove("hidden"); window.scrollTo(0, 0);
     const total = S.events.reduce((s, e) => s + e.pts, 0);
+    const NO_ROSC_WHY = {
+      compressions: "Compressions were never troubleshot, so ETCO₂ stayed low and ROSC couldn't occur.",
+      shock: "Shocking a non-shockable rhythm made ROSC impossible.",
+      early: "Cycle " + S.cycle + " was cut short before ROSC occurred. Run the full cycle unless ETCO₂ suddenly rises."
+    };
     $("endTitle").textContent = S.outcome === "rosc" ? "ROSC achieved" : S.outcome === "rosc-missed" ? "ROSC, but it was missed" : "Case ended without ROSC";
-    $("endSub").textContent = S.outcome === "rosc" ? "Your team got a pulse back at " + fmt(S.sim) + "." : S.outcome === "rosc-missed" ? "The patient had a pulse at the pause, but it was called something else." : "The case reached the " + (T.caseLimit / 60) + "-minute limit.";
+    $("endSub").textContent = S.outcome === "rosc" ? "Your team got a pulse back at " + fmt(S.sim) + "." : S.outcome === "rosc-missed" ? "The patient had a pulse at the pause, but it was called something else." : S.outcome === "no-rosc" ? (NO_ROSC_WHY[S.noRoscReason] || "ROSC wasn't achieved.") : "The case reached the " + (T.caseLimit / 60) + "-minute limit.";
     $("finalScore").textContent = total.toLocaleString();
     // categories
     const cats = ["BLS", "Monitoring & access", "Rhythm & pauses", "Drugs", "Defibrillation"];
@@ -2003,6 +2015,7 @@ window.SCENARIO = {
       const why = [];
       if (S.roscBlocked) why.push("Shocking a non-shockable rhythm made ROSC impossible.");
       if (S.poorQuality) why.push("Compression quality was never fixed, so ROSC couldn't occur.");
+      if (S.noRoscReason === "early") why.push("The final cycle was cut short before ROSC occurred.");
       set("roscHdr", why.length ? "missed" : "na", why.length ? why : ["ROSC wasn't reached."]);
     }
     set("pca", roscPause ? "good" : "na", roscPause ? ["The case ends at ROSC. Next would come the post-cardiac arrest (PCA) algorithm."] : ["Not reached."]);
@@ -2150,6 +2163,7 @@ window.SCENARIO = {
         set("roscHdr", pz.dx === "rosc" ? "good" : "missed", [pz.dx === "rosc" ? "ROSC recognized." : "A pulse was reported, but it was called " + CAT_LABEL[pz.dx] + "."]);
         set("pca", "good", ["The case ends here. Next would come the post-cardiac arrest (PCA) algorithm."]);
       } else {
+        if (pz.noRoscReason) set("roscHdr", "missed", [{ compressions: "ROSC was due by this pause, but compressions were never troubleshot, so it couldn't occur.", shock: "ROSC was due by this pause, but the earlier shock to a non-shockable rhythm made it impossible.", early: "ROSC was due during this cycle, but the pause came before it occurred." }[pz.noRoscReason]]);
         const hdr = (cat === "vf" || cat === "pvt") ? "shockHdr" : "nonShockHdr";
         set(hdr, pz.dx === cat ? "good" : "partial", ["The rhythm at this pause: " + CAT_LABEL[cat] + (pz.dx === cat ? "." : " (called " + CAT_LABEL[pz.dx] + ").")]);
       }
