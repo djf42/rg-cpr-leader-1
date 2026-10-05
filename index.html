@@ -815,6 +815,7 @@ window.POINTS = {
   ivCycle1: 50,
   correctRhythm: 100,           // each pause and check
   pauseUnder10: 50,             // each pause and check
+  pauseSpeedBonus: 50,          // extra for fast pauses: full at TIMING.pauseFastest or less, none at 10 s
   pauseOverPerSecond: -10,      // each second beyond 10 s
   rotation: 25,                 // fresh compressor at each pause
   vasopressorOnTime: 75,        // each vasopressor on a correct cycle
@@ -833,7 +834,8 @@ window.POINTS = {
   pulseReady: 50,               // someone already palpating when the pause starts
   pulseDuringPause: 25,         // palpator only got in position during the pause
   noPulseCheck: -50,            // no pulse check at a pause
-  earlyRoscCheck: 50            // paused early after a sudden ETCO2 rise (ROSC)
+  earlyRoscCheck: 50,           // paused early after a sudden ETCO2 rise (ROSC)
+  alsOutOfOrder: -50            // ALS step ordered before an earlier one (monitoring -> IV access -> reversals)
 };
 
 // ---- Timing (case-clock seconds unless noted) ----
@@ -842,6 +844,7 @@ window.TIMING = {
   fastForwardStopsBefore: 10,   // fast-forward stops 10 s before the 2-minute mark
   fastForwardRealSeconds: 5,    // ...and takes about 5 real seconds
   pauseBudget: 10,              // real seconds
+  pauseFastest: 3,              // a pause this short or shorter earns the full speed bonus
   caseLimit: 20 * 60,
   lowEtco2Grace: 30,
   tasks: { intubate: 20, ecg: 15, capno: 10, checkiv: 10, placeiv: 45, drug: 15, charge: 5 }
@@ -964,6 +967,8 @@ window.SCENARIO = {
       outcome: null,
       lastReal: realNow(),
       artT: 0, artPrev: 0, breathPh: 0, breathPrev: 0, breathIdx: -1, breathEt: null,
+      alsOrdered: {},  // when each ALS step was first ordered: ecg, capno, iv, reversal
+      alsErrors: [],   // ALS steps ordered out of sequence
       cyc: {}          // per-cycle tallies: seconds unattended, without ventilation, with ETCO2 <= 18
     };
   }
@@ -1005,8 +1010,23 @@ window.SCENARIO = {
   function etco2Now() { return S.etco2Disp == null ? etco2Target() : Math.round(S.etco2Disp); }
 
   // ---------- teammates and tasks ----------
+  const REVERSALS = ["naloxone", "flumazenil", "atipamezole"];
+  function checkAlsOrder(type, data) {
+    const o = S.alsOrdered, step = type === "ecg" ? "ecg" : type === "capno" ? "capno" : (type === "checkiv" || type === "placeiv") ? "iv" : (type === "drug" && data && REVERSALS.includes(data.key)) ? "reversal" : null;
+    if (!step || o[step] != null) return;
+    if (step === "iv" && (o.ecg == null || o.capno == null)) {
+      S.alsErrors.push("iv");
+      score("Monitoring & access", P.alsOutOfOrder, "IV access was ordered before " + [o.ecg == null ? "the ECG" : "", o.capno == null ? "the capnograph" : ""].filter(Boolean).join(" and ") + ". Start ALS in order: monitoring (ECG and ETCO₂) first, then IV access.");
+    }
+    if (step === "reversal" && (o.ecg == null || o.capno == null || o.iv == null)) {
+      S.alsErrors.push("reversal");
+      score("Monitoring & access", P.alsOutOfOrder, "A reversal was given before " + [o.ecg == null ? "the ECG" : "", o.capno == null ? "the capnograph" : "", o.iv == null ? "IV access was checked" : ""].filter(Boolean).join(", ") + ". Start ALS in order: monitoring, then IV access, then reversals.");
+    }
+    o[step] = S.sim;
+  }
   function assign(m, type, data) {
     const prev = m.task;
+    checkAlsOrder(type, data);
     if (prev && prev.type === "compress" && type !== "compress") log(m.name + " stopped compressions.");
     if (prev && prev.type === "ventilate" && type !== "ventilate") log(m.name + " stopped ventilating.");
     if (type === "compress") {
@@ -1029,7 +1049,7 @@ window.SCENARIO = {
     } else if (type === "idle") {
       m.task = null; say(m, "Standing by"); log(m.name + " is standing by.");
     } else {
-      if (type === "capno" && !S.intubated) { say(m, "Need the tube in first"); return; }
+      if (type === "capno" && !S.intubated && !S.team.some(x => x.task && x.task.type === "intubate")) { say(m, "Need the tube in first"); return; }
       m.task = { type, start: S.sim, dur: T.tasks[type], data };
       const msg = { intubate: "Intubating", ecg: "Attaching leads", capno: "Connecting capnograph", checkiv: "Checking the IV", placeiv: "Placing a catheter", drug: "Drawing up " + (data && data.name), charge: "Charging" }[type];
       const logMsg = { intubate: "is intubating", ecg: "is attaching ECG leads", capno: "is connecting the capnograph", checkiv: "is checking the IV catheter", placeiv: "is placing a new IV catheter", drug: "is drawing up " + (data && data.name) + (data && data.mL != null ? " " + data.mL + " mL" : ""), charge: "is charging the defibrillator to " + (data && data.J) + " J" }[type];
@@ -1080,7 +1100,14 @@ window.SCENARIO = {
     S.breathPrev = S.breathPh; S.breathPh += dt * Math.min(12, S.phase === "pause" ? 1 : S.rate) / 6;   // in breaths
 
     // tasks
-    S.team.forEach(m => { if (m.task && m.task.dur && S.sim - m.task.start >= m.task.dur) finishTask(m); });
+    S.team.forEach(m => {
+      if (!(m.task && m.task.dur && S.sim - m.task.start >= m.task.dur)) return;
+      if (m.task.type === "capno" && !S.intubated) {          // capnograph ready: wait for the tube
+        if (!m.task.waiting) { m.task.waiting = true; say(m, "Ready, waiting for the tube"); log(m.name + ": capnograph ready, waiting for the tube."); renderRoster(); }
+        return;
+      }
+      finishTask(m);
+    });
 
     // compressions bookkeeping
     const comp = compressingActive();
@@ -1241,7 +1268,11 @@ window.SCENARIO = {
     renderActions(); renderRoster();
   }
   function scorePauseTime(p) {
-    if (p.dur <= T.pauseBudget) score("Rhythm & pauses", P.pauseUnder10, "Pause " + p.k + " took " + p.dur.toFixed(1) + " s (under 10 s).");
+    if (p.dur <= T.pauseBudget) {
+      const frac = Math.max(0, Math.min(1, (T.pauseBudget - p.dur) / (T.pauseBudget - T.pauseFastest)));
+      const bonus = Math.round(P.pauseSpeedBonus * frac);
+      score("Rhythm & pauses", P.pauseUnder10 + bonus, "Pause " + p.k + " took " + p.dur.toFixed(1) + " s (under 10 s)" + (bonus ? ", including +" + bonus + " for speed." : "."));
+    }
     else score("Rhythm & pauses", Math.round((p.dur - T.pauseBudget)) * P.pauseOverPerSecond, "Pause " + p.k + " took " + p.dur.toFixed(1) + " s, " + (p.dur - T.pauseBudget).toFixed(1) + " s over the 10-second limit.");
   }
   const labelOf = k => (RHYTHM_CHOICES.find(r => r[0] === k) || [0, "unknown"])[1];
@@ -1340,7 +1371,7 @@ window.SCENARIO = {
     if (!S.intubated && !busy("intubate")) return "Assign someone to intubate so ventilation can start.";
     if (S.intubated && !v) return "Nobody is ventilating. Assign someone to ventilate.";
     if (!S.ecg && !busy("ecg")) return "Attach the ECG leads so you can read the rhythm at the pause.";
-    if (S.intubated && !S.capno && !busy("capno")) return "Connect the capnograph to monitor compression quality.";
+    if ((S.intubated || busy("intubate")) && !S.capno && !busy("capno")) return S.intubated ? "Connect the capnograph to monitor compression quality." : "Connect the capnograph now: they'll wait for the tube, then connect it.";
     if (!S.iv && !busy("checkiv") && !busy("placeiv")) return "This patient already has an IV catheter: have someone check it.";
     if (S.capno && etco2Now() <= 18) {
       if (!S.poorQuality && S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
@@ -1371,6 +1402,7 @@ window.SCENARIO = {
     if (!m.task) return "Standing by";
     const t = m.task, base = { palpate: "Palpating pulse", compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
     if (t.type === "compress") return base + " · " + fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "");
+    if (t.waiting) return "Capnograph ready · waiting for the tube";
     if (t.dur) return base + " · " + Math.max(1, Math.ceil(t.dur - (S.sim - t.start))) + " s left";
     return base;
   }
@@ -1504,7 +1536,8 @@ window.SCENARIO = {
       if (!S.intubated) opts.push(["intubate", "Intubate", T.tasks.intubate + " s", !S.team.some(x => x.task && x.task.type === "intubate")]);
       else opts.push(["ventilate", "Ventilate every 6 s", "Head", true]);
       if (!S.ecg) opts.push(["ecg", "Attach ECG leads", T.tasks.ecg + " s", true]);
-      if (!S.capno) opts.push(["capno", "Connect capnograph", S.intubated ? T.tasks.capno + " s" : "needs intubation", S.intubated]);
+      const tubeComing = S.team.some(x => x.task && x.task.type === "intubate");
+      if (!S.capno) opts.push(["capno", "Connect capnograph", S.intubated ? T.tasks.capno + " s" : tubeComing ? T.tasks.capno + " s, then waits for the tube" : "needs intubation", S.intubated || tubeComing]);
       if (!S.iv) { if (SC.hasIV) opts.push(["checkiv", "Check the IV catheter", T.tasks.checkiv + " s", true]); opts.push(["placeiv", "Place a new IV catheter", T.tasks.placeiv + " s", true]); }
       opts.push(["drug", "Give a drug…", S.iv ? T.tasks.drug + " s" : "needs IV access", S.iv]);
       opts.push(["palpate", m.task && m.task.type === "palpate" ? "Check the pulse again" : "Palpate pulse", "Femoral", !(m.task && m.task.type === "compress")]);
@@ -1968,7 +2001,9 @@ window.SCENARIO = {
     // ---- ALS ----
     const timely = (at, what) => at == null ? ["missed", [what + " never happened."]] : [at <= cycle1End ? "good" : "partial", [what + " at " + mmss(at) + (at <= cycle1End ? ", in the first cycle." : ", after the first cycle.")]];
     let r = timely(S.ecgAt, "ECG leads attached"); set("ecg", r[0], r[1]);
-    r = timely(S.ivAt, "IV access ready"); set("iv", r[0], r[1]);
+    r = timely(S.ivAt, "IV access ready");
+    if (S.alsErrors.includes("iv")) { r[0] = r[0] === "good" ? "partial" : r[0]; r[1].push("Ordered before monitoring was set up. Step 3 (ECG and ETCO₂) comes before step 4 (IV access)."); }
+    set("iv", r[0], r[1]);
     if (S.capnoAt == null) set("etco2", "missed", ["The capnograph was never connected, so compression quality couldn't be monitored."]);
     else {
       const lines = ["Capnograph connected at " + mmss(S.capnoAt) + "."];
@@ -1984,6 +2019,7 @@ window.SCENARIO = {
       set("etco2", state, lines);
     }
     const reversals = S.drugs.filter(d => ["naloxone", "flumazenil", "atipamezole"].includes(d.key));
+    if (S.alsErrors.includes("reversal")) set("rev", "partial", reversals.map(d => d.name + " given in cycle " + d.cycle + ".").concat(["Given before monitoring and IV access were set up. Steps 3 and 4 come before step 5 (reversals)."]));
     if (!SC.indicated.some(k => ["naloxone", "flumazenil", "atipamezole"].includes(k))) {
       if (reversals.length) set("rev", "missed", reversals.map(d => d.name + " given in cycle " + d.cycle + ", but there's nothing to reverse in this case."));
       else set("rev", "na", ["No reversible drugs in this case."]);
@@ -2134,6 +2170,7 @@ window.SCENARIO = {
       else set(id, "missed", [what + ": not yet done."]);
     };
     als("ecg", S.ecgAt, "ECG leads attached"); als("iv", S.ivAt, "IV access ready");
+    if (S.alsErrors.includes("iv") && S.alsOrdered.iv != null && cycleAt(S.alsOrdered.iv) === k) { const b = st.iv; b.state = b.state === "good" ? "partial" : b.state; b.lines.push("Ordered before monitoring was set up. Step 3 (ECG and ETCO₂) comes before step 4 (IV access)."); }
     if (S.capnoAt == null || cycleAt(S.capnoAt) > k) set("etco2", "missed", ["The capnograph wasn't connected yet, so compression quality couldn't be seen."]);
     else {
       const lines = [];
