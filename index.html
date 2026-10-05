@@ -1109,8 +1109,10 @@ window.SCENARIO = {
         log(m.name + ": " + (feel ? "pulse present." : "no pulse."));
         renderActions();
       } else {
-        const comp2 = compressingActive();
-        const feel = comp2 ? Math.random() < 0.5 : rhythmKeyNow() === "rosc";
+        const comp2 = compressingActive(), rosc = rhythmKeyNow() === "rosc";
+        // with ROSC there's a real pulse to feel, compressions or not; without it,
+        // compression-generated pulses are felt about half the time, and none once compressions stop
+        const feel = rosc ? true : comp2 ? Math.random() < 0.5 : false;
         say(m, feel ? "I feel a pulse" : "I don't feel a pulse", 3.5);
         log(m.name + (comp2 ? " (during compressions): " : ": ") + (feel ? "feels a pulse." : "doesn't feel a pulse."));
       }
