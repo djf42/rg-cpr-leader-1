@@ -381,6 +381,8 @@ html.az-lock,html.az-lock body{overflow:hidden}
 .elist b{display:inline-block;min-width:44px;font-variant-numeric:tabular-nums}
 #good b{color:#1f7a4d}#bad b{color:var(--red-deep)}
 .proto{font-size:14px;color:var(--ink-muted)}
+.btn.feedback{background:var(--navy);border-color:var(--navy);text-decoration:none}
+.btn.quit{color:var(--red-deep);border-color:var(--red-deep)}
 @media (max-width:380px){
   .topbar{gap:4px 8px !important}
   .topbar .stat b{font-size:20px !important}
@@ -427,6 +429,7 @@ html.az-lock,html.az-lock body{overflow:hidden}
       <span class="modetag modetag-row"></span>
       <div class="cyclebox"><span class="modetag" id="modeTag"></span><div class="clabel"><span>2-minute cycle <span class="ff hidden" id="ffBadge">Fast-forward</span></span><span id="cycleLeft">not started</span></div><div class="ctrack"><i id="cycleBar"></i></div></div>
       <button class="btn ghost xs" id="chartTop">Dosing chart</button>
+      <button class="btn ghost xs quit" id="quitBtn">Quit</button>
     </div>
     <div class="hint hidden" id="hint"></div>
     <div class="main">
@@ -503,7 +506,7 @@ html.az-lock,html.az-lock body{overflow:hidden}
     <h2 id="endTitle"></h2>
     <p class="muted" id="endSub"></p>
     <div class="bigscore" id="finalScore">0</div>
-    <p class="muted">points</p>
+    <p class="muted" id="maxLine">points</p>
     <div class="cats" id="cats"></div>
     <div class="algobox">
       <div class="algohead"><h3>Your case on the RECOVER CPR Algorithm</h3><button class="btn ghost xs" id="algoBig">Enlarge</button></div>
@@ -523,6 +526,7 @@ html.az-lock,html.az-lock body{overflow:hidden}
     </div>
     <details style="margin-top:18px"><summary><b>Case timeline</b></summary><ul class="elist" id="timeline" style="margin-top:8px"></ul></details>
     <div class="row" style="margin-top:22px">
+      <a class="btn feedback" href="https://docs.google.com/forms/d/e/1FAIpQLScvNoFVCREJimgFBcAu5h3bZqYHv4qscoj6p9G3O3FU44z0XA/viewform?usp=publish-editor" target="_blank" rel="noopener">Give feedback on this game</a>
       <button class="btn" id="againStd">Play again</button>
       <button class="btn ghost" id="againCoach">Play in coached mode</button>
       <button class="btn ghost" id="toIntro">Back to start</button>
@@ -1661,7 +1665,8 @@ window.SCENARIO = {
         const ok = opts.every((o, i) => o[1] === picked.has(i));
         list.querySelectorAll(".qopt").forEach((b, i) => { b.disabled = true; if (opts[i][1]) b.classList.add("right"); else if (picked.has(i)) b.classList.add("wrong"); });
         S.lowSince = null; S.lowPenalized = false;
-        if (ok) { S.poorQuality = false; score("BLS", P.coachingCorrect, "Coaching question answered correctly: " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique, and the team keeps it up."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
+        const needed = S.poorQuality;   // points only when compressions actually needed fixing
+        if (ok) { S.poorQuality = false; score("BLS", needed ? P.coachingCorrect : 0, "Coaching question answered correctly" + (needed ? "" : " (compressions were already good)") + ": " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique, and the team keeps it up."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
         else { score("BLS", 0, "Coaching question missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + "."); fb.textContent = "Not quite: the correct answer is highlighted. Compression quality hasn't changed. Troubleshoot again to try another question."; fb.className = "qfb bad"; }
         go.textContent = "Back to the case";
       });
@@ -1739,7 +1744,7 @@ window.SCENARIO = {
   }
   function armsFor(pose) {
     const a = 'stroke="#022033" stroke-width="10" stroke-linecap="round" fill="none"';
-    if (pose === "chest") return '<path ' + a + ' d="M-13 82 L -5 154 M 9 82 L 5 154"/><rect x="-13" y="152" width="26" height="12" rx="6" fill="#022033"/>';
+    if (pose === "chest") return '<path ' + a + ' d="M-13 82 L -1 151 M 11 82 L 1 151"/><circle cx="0" cy="157" r="9" fill="#022033"/>';   // one hand on top of the other
     if (pose === "ventilate") return '<path ' + a + ' d="M-13 84 L -30 168 M 12 84 L 18 150"/><g class="bag"><ellipse cx="-36" cy="176" rx="11" ry="7" fill="#84d1f5" stroke="#022033" stroke-width="2"/></g>';
     if (pose === "intubate") return '<path ' + a + ' d="M-13 84 L -32 172 M 12 84 L -16 174"/>';
     if (pose === "palpate") return '<path ' + a + ' d="M-13 84 L -50 180 M 12 84 L 20 150"/><circle cx="-52" cy="184" r="7" fill="#022033"/>';
@@ -1884,6 +1889,21 @@ window.SCENARIO = {
     $("co2Box").classList.toggle("low", S.coached && vent && S.phase === "running" && et <= 18);
   }
 
+  // ---------- the best possible score for this scenario ----------
+  function maxPossible() {
+    const N = SC.roscAtPause[0];                                        // ROSC comes at this pause
+    const pause = P.pauseUnder10 + P.pauseSpeedBonus;                   // under 10 s, at full speed
+    const vasoDoses = N >= 2 ? Math.floor((N - 2) / 2) + 1 : 0;         // cycles 2, 4, ... up to the ROSC cycle
+    const by = {
+      "BLS": P.compressionsFast + P.ventilationCycle1 + (SC.poorTechniqueFirstCompressor ? P.coachingCorrect : 0),
+      "Monitoring & access": P.ecgCycle1 + P.capnoCycle1 + P.ivCycle1,
+      "Rhythm & pauses": (N - 1) * (P.correctRhythm + pause + P.rotation + P.pulseReady) + (P.rosc + pause + P.pulseReady + P.earlyRoscCheck),
+      "Drugs": vasoDoses * (P.vasopressorOnTime + P.correctDose) + (SC.indicated.includes("atropine") ? P.atropineEarly + P.correctDose : 0),
+      "Defibrillation": 0
+    };
+    return { by, total: Object.values(by).reduce((a, b) => a + b, 0) };
+  }
+
   // ---------- debrief ----------
   function showDebrief() {
     closeModal();
@@ -1894,13 +1914,20 @@ window.SCENARIO = {
       shock: "Shocking a non-shockable rhythm made ROSC impossible.",
       early: "Cycle " + S.cycle + " was cut short before ROSC occurred. Run the full cycle unless ETCO₂ suddenly rises."
     };
-    $("endTitle").textContent = S.outcome === "rosc" ? "ROSC achieved" : S.outcome === "rosc-missed" ? "ROSC, but it was missed" : "Case ended without ROSC";
-    $("endSub").textContent = S.outcome === "rosc" ? "Your team got a pulse back at " + fmt(S.sim) + "." : S.outcome === "rosc-missed" ? "The patient had a pulse at the pause, but it was called something else." : S.outcome === "no-rosc" ? (NO_ROSC_WHY[S.noRoscReason] || "ROSC wasn't achieved.") : "The case reached the " + (T.caseLimit / 60) + "-minute limit.";
+    $("endTitle").textContent = S.outcome === "quit" ? "Case ended early" : S.outcome === "rosc" ? "ROSC achieved" : S.outcome === "rosc-missed" ? "ROSC, but it was missed" : "Case ended without ROSC";
+    $("endSub").textContent = S.outcome === "quit" ? "You ended the case at " + fmt(S.sim) + ". Your debrief covers what you did up to that point." : S.outcome === "rosc" ? "Your team got a pulse back at " + fmt(S.sim) + "." : S.outcome === "rosc-missed" ? "The patient had a pulse at the pause, but it was called something else." : S.outcome === "no-rosc" ? (NO_ROSC_WHY[S.noRoscReason] || "ROSC wasn't achieved.") : "The case reached the " + (T.caseLimit / 60) + "-minute limit.";
     $("finalScore").textContent = total.toLocaleString();
-    // categories
+    const MAX = maxPossible();
+    $("maxLine").textContent = "out of " + MAX.total.toLocaleString() + " possible points (" + Math.max(0, Math.round(total / MAX.total * 100)) + "%)";
+    // categories, each with its best possible score
     const cats = ["BLS", "Monitoring & access", "Rhythm & pauses", "Drugs", "Defibrillation"];
     const cbox = $("cats"); cbox.replaceChildren();
-    cats.forEach(c => { const pts = S.events.filter(e => e.cat === c).reduce((s, e) => s + e.pts, 0); if (!S.events.some(e => e.cat === c)) return; const d = el("div", "cat"); d.append(el("b", null, (pts > 0 ? "+" : "") + pts), el("span", null, c)); cbox.appendChild(d); });
+    cats.forEach(c => {
+      const pts = S.events.filter(e => e.cat === c).reduce((s, e) => s + e.pts, 0);
+      if (!S.events.some(e => e.cat === c) && !MAX.by[c]) return;
+      const d = el("div", "cat"); d.append(el("b", null, (pts > 0 ? "+" : "") + pts), el("span", null, c + (MAX.by[c] ? " · best " + MAX.by[c] : "")));
+      cbox.appendChild(d);
+    });
     // metrics
     const mbox = $("metrics"); mbox.replaceChildren();
     const metric = (k, v) => { const d = el("div", "metric"); d.append(el("span", null, k), el("b", null, v)); mbox.appendChild(d); };
@@ -2054,7 +2081,8 @@ window.SCENARIO = {
       if (S.roscBlocked) why.push("Shocking a non-shockable rhythm made ROSC impossible.");
       if (S.poorQuality) why.push("Compression quality was never fixed, so ROSC couldn't occur.");
       if (S.noRoscReason === "early") why.push("The final cycle was cut short before ROSC occurred.");
-      set("roscHdr", why.length ? "missed" : "na", why.length ? why : ["ROSC wasn't reached."]);
+      if (S.outcome === "quit") set("roscHdr", "na", ["The case was ended early, before ROSC."]);
+      else set("roscHdr", why.length ? "missed" : "na", why.length ? why : ["ROSC wasn't reached."]);
     }
     set("pca", roscPause ? "good" : "na", roscPause ? ["The case ends at ROSC. Next would come the post-cardiac arrest (PCA) algorithm."] : ["Not reached."]);
 
@@ -2399,6 +2427,12 @@ window.SCENARIO = {
     $("againCoach").addEventListener("click", () => start(true));
     $("toIntro").addEventListener("click", () => { $("screen-end").classList.add("hidden"); $("screen-intro").classList.remove("hidden"); window.scrollTo(0, 0); });
     $("chartTop").addEventListener("click", () => openChart());
+    $("quitBtn").addEventListener("click", () => {
+      if (!S || S.phase === "ended") return;
+      if (!confirm("End the case now? You'll see your debrief for what you've done so far.")) return;
+      closeModal(); S.pause = null; log("You ended the case.");
+      endCase("quit");
+    });
     $("algoBig").addEventListener("click", () => TZ.open());
     let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (S && S.phase !== "ended") { sizeMonitor(); ecgStamp.fill(-1); ecgLastIdx = -1; } }, 150); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && dismissModal) dismissModal(); });
