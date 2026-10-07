@@ -437,7 +437,7 @@ html.az-lock,html.az-lock body{overflow:hidden}
     <div class="main">
       <div>
         <div class="scene">
-          <svg viewBox="-100 -90 900 380" role="img" aria-label="The CPR team around a dog in lateral recumbency on a treatment table">
+          <svg viewBox="-100 -124 900 414" role="img" aria-label="The CPR team around a dog in lateral recumbency on a treatment table">
             <rect x="-100" y="270" width="900" height="20" fill="#c4eef9"/>
             <g id="layerBack"></g>
             <rect x="234" y="196" width="432" height="14" rx="4" fill="#022033"/>
@@ -841,7 +841,8 @@ window.POINTS = {
   pulseDuringPause: 25,         // palpator only got in position during the pause
   noPulseCheck: -50,            // no pulse check at a pause
   earlyRoscCheck: 50,           // paused early after a sudden ETCO2 rise (ROSC)
-  alsOutOfOrder: -50            // ALS step ordered before an earlier one (monitoring -> IV access -> reversals)
+  alsOutOfOrder: -50,
+  ventCoachingCorrect: 25       // ventilation coaching answered correctly when ventilation needed fixing            // ALS step ordered before an earlier one (monitoring -> IV access -> reversals)
 };
 
 // ---- Timing (case-clock seconds unless noted) ----
@@ -884,18 +885,30 @@ window.chartColumn = function (kg) {
   return w.length - 1;
 };
 
-// ---- Coaching questions for low ETCO2 (one is asked each time) ----
+// ---- Coaching questions for low ETCO2 (one is asked each time). fixedOrder: options keep the listed order; otherwise shuffled ----
 window.COACHING = [
-  { q: "What rate should the compressor target?",
-    options: [["100–120 compressions per minute", true], ["60–80 compressions per minute", false], ["140–160 compressions per minute", false]] },
-  { q: "What depth should the compressor target?",
-    options: [["1/3 to 1/2 the width of the chest", true], ["1/4 to 1/3 the width of the chest", false], ["1/2 to 2/3 the width of the chest", false]] },
+  { q: "What rate should the compressor target?", fixedOrder: true,      // shown in ascending order
+    options: [["60–80 compressions per minute", false], ["100–120 compressions per minute", true], ["140–160 compressions per minute", false]] },
+  { q: "What depth should the compressor target?", fixedOrder: true,
+    options: [["1/4 to 1/3 the width of the chest", false], ["1/3 to 1/2 the width of the chest", true], ["1/2 to 2/3 the width of the chest", false]] },
   { q: "How should the compressor's hands be oriented?",
     options: [["One hand on top of the other, fingers interlaced", true], ["Hands side by side, as close as possible", false], ["Fingertips on the chest", false]] },
   { q: "How should the compressor's shoulders and hands be oriented?",
     options: [["Shoulders directly above the hands", true], ["Shoulders behind the hands", false], ["Leaning to one side", false]] },
   { q: "Should the compressor's elbows be bent?",
     options: [["No: elbows locked, arms straight", true], ["Yes, slightly bent", false], ["Yes, bent to about 90 degrees", false]] }
+];
+
+// ---- Coaching questions for ventilation (reviewed by Dan). fixedOrder: options keep the listed order; otherwise shuffled ----
+window.VENT_COACHING = [
+  { q: "How often should the ventilator give a breath?", fixedOrder: true,      // shown in ascending order
+    options: [["Every 3 seconds", false], ["Every 6 seconds", true], ["Every 10 seconds", false], ["Every 12 seconds", false]] },
+  { q: "What tidal volume should each breath deliver?", fixedOrder: true,
+    options: [["About 5 mL/kg", false], ["About 10 mL/kg", true], ["About 15 mL/kg", false], ["About 20 mL/kg", false]] },
+  { q: "How long should each breath (the inspiratory time) take?", fixedOrder: true,
+    options: [["About 1 second", true], ["About 2 seconds", false], ["About 3 seconds", false], ["About 5 seconds", false]] },
+  { q: "In an intubated patient, how should compressions be altered for breaths?",   // shown in random order
+    options: [["Breaths can be given simultaneously with compressions", true], ["Give 30 compressions, then pause compressions for 2 quick breaths", false], ["Pause compressions briefly for each breath", false]] }
 ];
 
 // ---- Scenario 1 ----
@@ -912,7 +925,8 @@ window.SCENARIO = {
     { id: "priya", name: "Priya", shirt: "#f2b134" }
   ],
   hasIV: true,
-  poorTechniqueFirstCompressor: true,      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
+  poorTechniqueFirstCompressor: true,
+  poorVentilationFirst: false,             // when true, the first ventilator bags too fast until coached      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
   rhythmSequence: ["asys", "pea38w", "pea94n"],  // rhythm found at pause 1, 2, 3 (the last repeats if the case runs longer)
   roscAtPause: [4],                        // fixed, so every learner gets the same 4 cycles and the same chances to score
                                            // (ROSC happens at a random point within cycle 4; it comes later only if the learner's own errors delay it)
@@ -1047,6 +1061,7 @@ window.SCENARIO = {
       const cur = ventilator(); if (cur && cur !== m) cur.task = null;
       m.task = { type, start: S.sim };
       if (S.ventStartAt == null) S.ventStartAt = S.sim;
+      if (SC.poorVentilationFirst && !S.firstVentilatorAssigned) { S.poorVent = true; S.firstVentilatorAssigned = true; }
       say(m, "Ventilating"); log(m.name + " is ventilating every 6 seconds.");
     } else if (type === "palpate") {
       m.task = { type, start: S.sim };
@@ -1068,6 +1083,7 @@ window.SCENARIO = {
     if (t.type === "intubate") {
       S.intubated = true; log(m.name + ": tube is in. Starting ventilation.");
       m.task = { type: "ventilate", start: S.sim }; if (S.ventStartAt == null) S.ventStartAt = S.sim;
+      if (SC.poorVentilationFirst && !S.firstVentilatorAssigned) { S.poorVent = true; S.firstVentilatorAssigned = true; }
       say(m, "Tube's in, ventilating");
     } else if (t.type === "ecg") { S.ecg = true; S.ecgAt = S.sim; S.ecgReal0 = realNow(); say(m, "Leads on"); log(m.name + ": ECG leads on."); }
     else if (t.type === "capno") { S.capno = true; S.capnoAt = S.sim; say(m, "Capnograph on"); log(m.name + ": capnograph connected."); }
@@ -1103,7 +1119,7 @@ window.SCENARIO = {
     S.sim += sdt;
     // monitor clocks: compression artifact and breaths speed up with fast-forward, without jumps
     S.artPrev = S.artT; S.artT += dt * Math.min(6, S.rate);
-    S.breathPrev = S.breathPh; S.breathPh += dt * Math.min(12, S.phase === "pause" ? 1 : S.rate) / 6;   // in breaths
+    S.breathPrev = S.breathPh; S.breathPh += dt * Math.min(12, S.phase === "pause" ? 1 : S.rate) / (S.poorVent ? 2.5 : 6);   // in breaths (too fast if ventilation needs fixing)
 
     // tasks
     S.team.forEach(m => {
@@ -1344,7 +1360,7 @@ window.SCENARIO = {
     $("cycleBar").style.width = S.cycleStart == null ? "0%" : Math.min(100, ct / T.cycle * 100) + "%";
     $("cycleBar").classList.toggle("due", ct >= T.cycle - T.fastForwardStopsBefore);
     $("ffBadge").classList.toggle("hidden", !(S.ffTarget != null));
-    const pb = $("pauseBtn"); if (pb) pb.classList.toggle("pulse", S.phase === "running" && ct >= T.cycle - T.fastForwardStopsBefore);
+    const pb = $("pauseBtn"); if (pb) pb.classList.toggle("pulse", S.coached && S.phase === "running" && ct >= T.cycle - T.fastForwardStopsBefore);
   }
   // newest entries at the top; keeps the reader's place if they've scrolled back
   const LOG_TAGS = { dx: "Rhythm", drug: "Drug", shock: "Shock", pause: "Pause" };
@@ -1539,7 +1555,8 @@ window.SCENARIO = {
       const opts = [];
       if (m.task && m.task.type === "compress") opts.push(["coach", "Troubleshoot compressions", "Coach " + m.name, true]);
       else opts.push(["compress", "Start compressions", "Chest", true]);
-      if (!S.intubated) opts.push(["intubate", "Intubate", T.tasks.intubate + " s", !S.team.some(x => x.task && x.task.type === "intubate")]);
+      if (!S.intubated) opts.push(["intubate", "Intubate and ventilate", T.tasks.intubate + " s, then ventilates", !S.team.some(x => x.task && x.task.type === "intubate")]);
+      else if (m.task && m.task.type === "ventilate") opts.push(["ventcoach", "Troubleshoot ventilation", "Coach " + m.name, true]);
       else opts.push(["ventilate", "Ventilate every 6 s", "Head", true]);
       if (!S.ecg) opts.push(["ecg", "Attach ECG leads", T.tasks.ecg + " s", true]);
       const tubeComing = S.team.some(x => x.task && x.task.type === "intubate");
@@ -1554,7 +1571,8 @@ window.SCENARIO = {
         const b = el("button", "titem"); b.type = "button"; b.disabled = !ok;
         b.append(el("span", null, label), el("small", null, meta));
         b.addEventListener("click", () => {
-          if (type === "coach") return openCoaching();
+          if (type === "coach") return openCoaching("comp");
+          if (type === "ventcoach") return openCoaching("vent");
           if (type === "drug") return openDrug(m);
           if (type === "charge") return openCharge(m);
           closeModal(); assign(m, type);
@@ -1640,15 +1658,19 @@ window.SCENARIO = {
     });
   }
 
-  function openCoaching() {
-    const c = compressor(); if (!c) return;
+  function openCoaching(kind) {
+    kind = kind === "vent" ? "vent" : "comp";
+    const isVent = kind === "vent", c = isVent ? ventilator() : compressor(); if (!c) return;
+    const bank = isVent ? window.VENT_COACHING : window.COACHING;
+    const asked = isVent ? (S.ventAsked = S.ventAsked || []) : S.coachingAsked;
     // a question not asked yet this case, if possible
-    const pool = window.COACHING.map((q, i) => i).filter(i => !S.coachingAsked.includes(i));
-    const qi = (pool.length ? pool : window.COACHING.map((q, i) => i))[Math.floor(Math.random() * (pool.length || window.COACHING.length))];
-    S.coachingAsked.push(qi);
-    const Q = window.COACHING[qi];
-    const opts = Q.options.map(o => o.slice()).sort(() => Math.random() - 0.5);
-    modal("Coach " + c.name + " on compressions", body => {
+    const pool = bank.map((q, i) => i).filter(i => !asked.includes(i));
+    const qi = (pool.length ? pool : bank.map((q, i) => i))[Math.floor(Math.random() * (pool.length || bank.length))];
+    asked.push(qi);
+    const Q = bank[qi];
+    const opts = Q.options.map(o => o.slice());
+    if (!Q.fixedOrder) opts.sort(() => Math.random() - 0.5);   // numeric scales keep their ascending order
+    modal("Coach " + c.name + " on " + (isVent ? "ventilation" : "compressions"), body => {
       body.appendChild(el("p", "qtext", Q.q));
       body.appendChild(el("p", "muted small", "Select all that apply."));
       const list = el("div", "qlist"); const picked = new Set();
@@ -1666,10 +1688,19 @@ window.SCENARIO = {
         answered = true;
         const ok = opts.every((o, i) => o[1] === picked.has(i));
         list.querySelectorAll(".qopt").forEach((b, i) => { b.disabled = true; if (opts[i][1]) b.classList.add("right"); else if (picked.has(i)) b.classList.add("wrong"); });
-        S.lowSince = null; S.lowPenalized = false;
-        const needed = S.poorQuality;   // points only when compressions actually needed fixing
-        if (ok) { S.poorQuality = false; score("BLS", needed ? P.coachingCorrect : 0, "Coaching question answered correctly" + (needed ? "" : " (compressions were already good)") + ": " + Q.q); fb.textContent = "Correct. " + c.name + " adjusts their technique, and the team keeps it up."; fb.className = "qfb good"; say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase()); }
-        else { score("BLS", 0, "Coaching question missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + "."); fb.textContent = "Not quite: the correct answer is highlighted. Compression quality hasn't changed. Troubleshoot again to try another question."; fb.className = "qfb bad"; }
+        const what = isVent ? "Ventilation" : "Compression quality";
+        if (!isVent) { S.lowSince = null; S.lowPenalized = false; }
+        const needed = isVent ? !!S.poorVent : S.poorQuality;   // points only when something actually needed fixing
+        const label = isVent ? "Ventilation coaching answered correctly" : "Coaching question answered correctly";
+        if (ok) {
+          if (isVent) S.poorVent = false; else S.poorQuality = false;
+          score("BLS", needed ? (isVent ? P.ventCoachingCorrect : P.coachingCorrect) : 0, label + (needed ? "" : " (" + (isVent ? "ventilation was" : "compressions were") + " already good)") + ": " + Q.q);
+          fb.textContent = "Correct. " + c.name + " adjusts their technique, and the team keeps it up."; fb.className = "qfb good";
+          say(c, "Got it, adjusting"); log("You coached " + c.name + ": " + Q.q.toLowerCase());
+        } else {
+          score("BLS", 0, (isVent ? "Ventilation coaching" : "Coaching question") + " missed: " + Q.q + " Correct answer: " + Q.options.filter(o => o[1]).map(o => o[0]).join("; ") + ".");
+          fb.textContent = "Not quite: the correct answer is highlighted. " + what + " hasn't changed. Troubleshoot again to try another question."; fb.className = "qfb bad";
+        }
         go.textContent = "Back to the case";
       });
       body.appendChild(go);
@@ -1729,15 +1760,20 @@ window.SCENARIO = {
       });
       gb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTaskMenu(m.id); } });
     });
-    const tb = svgEl("g", { id: "troubleBtn", class: "troublebtn", tabindex: "0", role: "button", "aria-label": "Troubleshoot compressions" });
-    tb.append(svgEl("rect", { x: -104, y: -50, width: 208, height: 30, rx: 15, fill: "#022033", stroke: "#fff", "stroke-width": 2 }),
-              svgEl("path", { d: "M-6 -20 L 0 -12 L 6 -20 Z", fill: "#022033" }));
-    const tt = svgEl("text", { x: 0, y: -30, "text-anchor": "middle", "font-family": "Outfit, Arial, sans-serif", "font-weight": 700, "font-size": 14, fill: "#fff" });
-    tt.textContent = "Troubleshoot compressions"; tb.appendChild(tt);
-    tb.style.display = "none";
-    tb.addEventListener("click", openCoaching);
-    tb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCoaching(); } });
-    bub.appendChild(tb);
+    [["troubleBtn", "Troubleshoot compressions", "comp", 208], ["ventBtn", "Troubleshoot ventilation", "vent", 196]].forEach(([id, label, kind, w]) => {
+      const tb = svgEl("g", { id, class: "troublebtn", tabindex: "0", role: "button", "aria-label": label });
+      const inner = svgEl("g", { class: "tbinner" });
+      inner.append(svgEl("rect", { x: -w / 2, y: -50, width: w, height: 30, rx: 15, fill: "#022033", stroke: "#fff", "stroke-width": 2 }),
+                   svgEl("path", { d: "M-6 -20 L 0 -12 L 6 -20 Z", fill: "#022033" }));
+      const tt = svgEl("text", { x: 0, y: -30, "text-anchor": "middle", "font-family": "Outfit, Arial, sans-serif", "font-weight": 700, "font-size": 14, fill: "#fff" });
+      tt.textContent = label; inner.appendChild(tt);
+      const stem = svgEl("path", { class: "tbstem", d: "M0 -12 V 0", stroke: "#022033", "stroke-width": 2, "stroke-dasharray": "3 3" });
+      tb.append(stem, inner);
+      tb.style.display = "none"; tb.dataset.w = w;
+      tb.addEventListener("click", () => openCoaching(kind));
+      tb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCoaching(kind); } });
+      bub.appendChild(tb);
+    });
     sceneBuilt = true;
   }
   function stationOf(m) {
@@ -1747,7 +1783,7 @@ window.SCENARIO = {
   function armsFor(pose) {
     const a = 'stroke="#022033" stroke-width="10" stroke-linecap="round" fill="none"';
     if (pose === "chest") return '<path ' + a + ' d="M-13 82 L -1 151 M 11 82 L 1 151"/><circle cx="0" cy="157" r="9" fill="#022033"/>';   // one hand on top of the other
-    if (pose === "ventilate") return '<path ' + a + ' d="M-13 84 L -30 168 M 12 84 L 18 150"/><g class="bag"><ellipse cx="-36" cy="176" rx="11" ry="7" fill="#84d1f5" stroke="#022033" stroke-width="2"/></g>';
+    if (pose === "ventilate") return '<path d="M-24 172 L -12 180" stroke="#9aa6af" stroke-width="5" stroke-linecap="round"/><g class="bag"><ellipse cx="-56" cy="164" rx="30" ry="15" fill="#84d1f5" stroke="#022033" stroke-width="2.5"/><rect x="-28" y="160" width="10" height="12" rx="3" fill="#e6e6e6" stroke="#022033" stroke-width="2"/></g><path ' + a + ' d="M-13 84 L -60 156 M 12 84 L -42 170"/>';
     if (pose === "intubate") return '<path ' + a + ' d="M-13 84 L -32 172 M 12 84 L -16 174"/>';
     if (pose === "palpate") return '<path ' + a + ' d="M-13 84 L -50 180 M 12 84 L 20 150"/><circle cx="-52" cy="184" r="7" fill="#022033"/>';
     if (pose === "cart") return '<path ' + a + ' d="M-12 84 L -22 196 M 12 84 L 22 196"/>';
@@ -1775,14 +1811,23 @@ window.SCENARIO = {
       // speech bubble (positioned after the loop so overlapping bubbles can be stacked)
       m._x = x;
     });
-    // "Troubleshoot compressions" floats above whoever is compressing (only while compressions run)
-    const tb = $("troubleBtn"), cmp = compressor(), showTb = !!cmp && S.phase === "running";
+    // "Troubleshoot compressions" floats above the compressor and "Troubleshoot ventilation" above the
+    // ventilator (only while running); if they'd overlap, the ventilation button sits one level higher
     const placed = [];
-    if (showTb) {
-      const tx = Math.min(Math.max(cmp._x, 8), 692);
-      if (tb.dataset.x !== String(tx)) { tb.dataset.x = tx; tb.style.transform = "translate(" + tx + "px, 0px)"; }
-      tb.style.display = ""; placed.push({ l: tx - 104, r: tx + 104, level: 0 });   // bubbles stack above it
-    } else tb.style.display = "none";
+    [["troubleBtn", compressor()], ["ventBtn", ventilator()]].forEach(([id, who]) => {
+      const tb = $(id);
+      if (!who || S.phase !== "running") { tb.style.display = "none"; return; }
+      const w = +tb.dataset.w, tx = Math.min(Math.max(who._x, -100 + w / 2 + 4), 800 - w / 2 - 4);
+      let level = 0; while (placed.some(p => p.level === level && tx - w / 2 < p.r + 6 && tx + w / 2 > p.l - 6)) level++;
+      placed.push({ l: tx - w / 2, r: tx + w / 2, level });
+      const key = tx + "|" + level;
+      if (tb.dataset.key !== key) {
+        tb.dataset.key = key; tb.style.transform = "translate(" + tx + "px, 0px)";
+        tb.querySelector(".tbinner").setAttribute("transform", "translate(0 " + (-34 * level) + ")");
+        tb.querySelector(".tbstem").setAttribute("d", "M0 -12 V -12");   // no connector: the button sits directly above its teammate
+      }
+      tb.style.display = "";
+    });
     // speech bubbles: stack any that would overlap a neighbor's (or the button)
     const vis = S.team.filter(m => m.bubble && r < m.bubble.until).sort((a, b) => a._x - b._x);
     S.team.forEach(m => { if (!vis.includes(m)) { const bg = $("bb-" + m.id); bg.style.opacity = 0; bg.dataset.key = ""; } });
@@ -1897,7 +1942,7 @@ window.SCENARIO = {
     const pause = P.pauseUnder10 + P.pauseSpeedBonus;                   // under 10 s, at full speed
     const vasoDoses = N >= 2 ? Math.floor((N - 2) / 2) + 1 : 0;         // cycles 2, 4, ... up to the ROSC cycle
     const by = {
-      "BLS": P.compressionsFast + P.ventilationCycle1 + (SC.poorTechniqueFirstCompressor ? P.coachingCorrect : 0),
+      "BLS": P.compressionsFast + P.ventilationCycle1 + (SC.poorTechniqueFirstCompressor ? P.coachingCorrect : 0) + (SC.poorVentilationFirst ? P.ventCoachingCorrect : 0),
       "Monitoring & access": P.ecgCycle1 + P.capnoCycle1 + P.ivCycle1,
       "Rhythm & pauses": (N - 1) * (P.correctRhythm + pause + P.rotation + P.pulseReady) + (P.rosc + pause + P.pulseReady + P.earlyRoscCheck),
       "Drugs": vasoDoses * (P.vasopressorOnTime + P.correctDose) + (SC.indicated.includes("atropine") ? P.atropineEarly + P.correctDose : 0),
