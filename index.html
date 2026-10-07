@@ -224,7 +224,8 @@ body::after{opacity:.16}
 .member .dot{grid-row:1/3}
 .dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid var(--navy);flex:none}
 .mname{font-family:var(--display);font-weight:800;font-size:16px}
-.mtask{font-size:13px;color:var(--ink-muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtask{font-size:13px;color:var(--ink-muted);grid-column:2;overflow-wrap:anywhere}
+.mtime{font-size:13px;font-weight:700;color:var(--navy);grid-column:2;font-variant-numeric:tabular-nums}
 .mbar{grid-column:1/3;height:3px;background:var(--mist);border-radius:2px;overflow:hidden;margin-top:4px}
 .mbar i{display:block;height:100%;width:0;background:var(--navy)}
 .roster-note{font-size:13px;color:var(--ink-muted);margin:8px 2px 0}
@@ -244,10 +245,16 @@ body::after{opacity:.16}
 .actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .actions .btn{width:100%;font-size:17px;padding:11px 16px}
 .arow{display:flex;gap:8px}
-.arow .btn{flex:1 1 0;min-width:0;padding:7px 8px;font-size:16px}
+.arow .btn{flex:1 1 0;min-width:0;padding:7px 8px;font-size:16px;line-height:1.15}
 .btn.pulse{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(238,60,54,.55)}50%{box-shadow:0 0 0 8px rgba(238,60,54,0)}}
 .btn.shock{background:#b3261e}
+.btn.eyes{background:var(--navy);border-color:var(--navy)}
+.btn.eyes:hover{background:#0b3a57}
+.btn.eyes:disabled{background:var(--mist);border-color:var(--mist)}
+.btn.eyes.pulse{animation:pulseNavy 1s ease-in-out infinite}
+@keyframes pulseNavy{0%,100%{box-shadow:0 0 0 0 rgba(2,32,51,.5)}50%{box-shadow:0 0 0 8px rgba(2,32,51,0)}}
+@media (max-width:560px){.arow{flex-wrap:wrap}.arow .btn.eyes{flex-basis:100%}}
 .btn.sm{padding:8px 14px;font-size:15px}
 .phead{display:flex;justify-content:space-between;align-items:center;background:var(--red);color:#fff;border-radius:var(--radius-md);padding:10px 14px}
 .phead b{font-family:var(--display);font-size:20px}
@@ -343,6 +350,9 @@ table.chart th.hl{background:var(--navy);color:#fff}
 .algodetail{position:sticky;top:12px;background:var(--ice);border-radius:var(--radius-md);padding:12px 14px;font-size:15px}
 .algodetail ul{margin:8px 0 0;padding-left:18px}
 .algodetail li{margin:4px 0}
+ul.marked{list-style:none;padding-left:0}
+ul.marked li{display:flex;gap:8px;align-items:flex-start}
+ul.marked .mki{flex:0 0 18px;height:18px;border-radius:50%;color:#fff;font:700 11px/18px Arial,sans-serif;text-align:center;margin-top:2px}
 .adhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .adhead b{font-family:var(--display);font-size:17px}
 .adsub{display:block;font-family:var(--body);font-weight:400;font-size:13px;color:var(--ink-muted)}
@@ -411,10 +421,11 @@ html.az-lock,html.az-lock body{overflow:hidden}
     </div>
     <h3>How it works</h3>
     <ul class="howlist">
-      <li><b>Give orders:</b> tap a teammate, then choose their task. Tasks take time, and each person does one thing at a time.</li>
-      <li><b>Run 2-minute cycles:</b> when everything you want is underway, tap <b>Finish cycle</b> to skip ahead to just before the 2-minute mark.</li>
-      <li><b>Pause and check in under 10 seconds:</b> name the rhythm, then pick who takes over compressions.</li>
-      <li><b>Dose from the chart:</b> type each drug's volume, using the RECOVER dosing chart.</li>
+      <li>Tap a teammate and choose a task from the pop-up menu to give an order. Tasks take time, and each person does one thing at a time.</li>
+      <li>The timer at the top of the screen will help you track your 2-minute cycles. Once the team has completed all tasks, you can click <b class="ffLabel">Advance to 1:50</b> to fast-forward to 10 seconds before the end of the cycle; the game then slows down to real time for those last 10 seconds. During the fast-forward, your teammates will finish any assigned tasks and the monitor will keep updating. Click <b>Normal speed</b> if you want to slow back down to real time at any point during the fast-forward.</li>
+      <li>Click <b>All eyes on the ECG</b> if you want all members of the team to look at the monitor.</li>
+      <li>Click <b>Pause compressions</b> anytime you would like the compressor to pause.</li>
+      <li>Use the RECOVER dosing chart to find the correct doses for drugs and defibrillation, and enter those values when you give an order to a team member.</li>
     </ul>
     <div class="row">
       <button class="btn" id="startStd">Start the case</button>
@@ -841,8 +852,9 @@ window.POINTS = {
   pulseDuringPause: 25,         // palpator only got in position during the pause
   noPulseCheck: -50,            // no pulse check at a pause
   earlyRoscCheck: 50,           // paused early after a sudden ETCO2 rise (ROSC)
-  alsOutOfOrder: -50,
-  ventCoachingCorrect: 25       // ventilation coaching answered correctly when ventilation needed fixing            // ALS step ordered before an earlier one (monitoring -> IV access -> reversals)
+  alsOutOfOrder: -50,           // ALS step ordered before an earlier one (monitoring -> IV access -> reversals)
+  ventCoachingCorrect: 25,      // ventilation coaching answered correctly when ventilation needed fixing
+  allEyesOnEcg: 25              // "All eyes on the ECG" called within TIMING.allEyesWindow before a pause (no penalty if missed)
 };
 
 // ---- Timing (case-clock seconds unless noted) ----
@@ -854,6 +866,7 @@ window.TIMING = {
   pauseFastest: 3,              // a pause this short or shorter earns the full speed bonus
   caseLimit: 20 * 60,
   lowEtco2Grace: 30,
+  allEyesWindow: 20,            // "All eyes on the ECG" counts if called this many case-clock seconds before the pause
   tasks: { intubate: 20, ecg: 15, capno: 10, checkiv: 10, placeiv: 45, drug: 15, charge: 5 }
 };
 
@@ -925,8 +938,8 @@ window.SCENARIO = {
     { id: "priya", name: "Priya", shirt: "#f2b134" }
   ],
   hasIV: true,
-  poorTechniqueFirstCompressor: true,
-  poorVentilationFirst: false,             // when true, the first ventilator bags too fast until coached      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
+  poorTechniqueFirstCompressor: true,      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
+  poorVentilationFirst: false,             // when true, the first ventilator bags too fast until coached
   rhythmSequence: ["asys", "pea38w", "pea94n"],  // rhythm found at pause 1, 2, 3 (the last repeats if the case runs longer)
   roscAtPause: [4],                        // fixed, so every learner gets the same 4 cycles and the same chances to score
                                            // (ROSC happens at a random point within cycle 4; it comes later only if the learner's own errors delay it)
@@ -987,6 +1000,7 @@ window.SCENARIO = {
       outcome: null,
       lastReal: realNow(),
       artT: 0, artPrev: 0, breathPh: 0, breathPrev: 0, breathIdx: -1, breathEt: null,
+      eyesAt: null,    // case time of the last "All eyes on the ECG" call
       alsOrdered: {},  // when each ALS step was first ordered: ecg, capno, iv, reversal
       alsErrors: [],   // ALS steps ordered out of sequence
       cyc: {}          // per-cycle tallies: seconds unattended, without ventilation, with ETCO2 <= 18
@@ -1208,6 +1222,14 @@ window.SCENARIO = {
   }
 
   // ---------- pause and check ----------
+  function allEyes() {
+    if (S.phase !== "running" || S.cycleStart == null) return;
+    log("Leader: \"All eyes on the ECG.\"");
+    if (!S.ecg) { const w = S.team.find(m => !(m.task && m.task.type === "compress")) || S.team[0]; say(w, "The ECG isn't attached yet", 3); return; }
+    S.eyesAt = S.sim;
+    S.team.forEach(m => { if (!(m.task && m.task.type === "compress")) say(m, "Watching the ECG", 2.6); });   // the compressor keeps their focus on compressing
+  }
+  const ffLabel = () => "Advance to " + fmt(T.cycle - T.fastForwardStopsBefore);   // "Advance to 1:50"
   function startPause() {
     if (S.phase !== "running" || S.cycleStart == null) return;
     const k = S.cycle;
@@ -1220,10 +1242,11 @@ window.SCENARIO = {
     const prev = compressor();
     const palp = S.team.find(m => m.task && m.task.type === "palpate");
     S.pause = { k, rhythm: rk, real0: realNow(), simAt: S.sim, cycleLen: cycleTime(), prevCompressor: prev ? prev.id : null, dx: null, next: null, shocked: false,
-                pulseReady: !!palp, pulseChecked: false, pulseBy: null, afterRoscRise: S.roscOnsetSim != null && rk === "rosc", noRoscReason };
+                pulseReady: !!palp, pulseChecked: false, pulseBy: null, eyes: S.eyesAt != null && S.sim - S.eyesAt <= T.allEyesWindow, afterRoscRise: S.roscOnsetSim != null && rk === "rosc", noRoscReason };
     if (palp) palp.pulseReportAt = realNow() + 1.2;
+    S.eyesAt = null;
     S.phase = "pause"; S.ffTarget = null; S.rate = 1; S.stopReal = realNow();
-    log("Pause and check after cycle " + k + " (" + Math.round(S.pause.cycleLen) + " s of compressions).", "pause");
+    log("Compressions paused after cycle " + k + " (" + Math.round(S.pause.cycleLen) + " s of compressions).", "pause");
     renderActions();
   }
   function updatePause(r) {
@@ -1251,10 +1274,16 @@ window.SCENARIO = {
     p.dur = dur; p.endAt = S.sim; S.pauses.push(p);
     const nextM = S.team.find(m => m.id === p.next);
     log("Rhythm called: " + labelOf(p.dx) + " (pause " + p.k + ", " + dur.toFixed(1) + " s hands-off)" + (p.dx !== "rosc" && nextM ? ". " + nextM.name + (nextM.id === p.prevCompressor ? " continues compressions." : " takes over compressions.") : "."), "dx");
-    // pulse check scoring
+    // pulse check scoring: a palpator in place before the pause counts even if the learner resumed before the report
+    if (p.pulseReady && !p.pulseChecked) {
+      const pm = S.team.find(m => m.task && m.task.type === "palpate");
+      if (pm) { p.pulseChecked = true; p.pulseBy = pm.id; pm.pulseReportAt = null; }
+    }
     if (p.pulseChecked && p.pulseReady) score("Rhythm & pauses", P.pulseReady, "Pause " + p.k + ": " + (S.team.find(m => m.id === p.pulseBy) || {}).name + " was already palpating, so the pulse was checked right away.");
     else if (p.pulseChecked) score("Rhythm & pauses", P.pulseDuringPause, "Pause " + p.k + ": pulse checked, but the palpator only got in position during the pause. Have someone palpate before you pause.");
-    else score("Rhythm & pauses", P.noPulseCheck, "Pause " + p.k + ": nobody checked the pulse. Every pause and check needs a pulse check.");
+    else score("Rhythm & pauses", P.noPulseCheck, "Pause " + p.k + ": nobody checked the pulse. Every pause in compressions needs a pulse check.");
+    if (p.eyes) score("Rhythm & pauses", P.allEyesOnEcg, "Pause " + p.k + ": you called \"All eyes on the ECG\" before pausing, so the whole team could help read the rhythm.");
+    else score("Rhythm & pauses", 0, "Pause " + p.k + ": no \"All eyes on the ECG\" call. As the pause approaches, ask the whole team to watch the monitor (+" + P.allEyesOnEcg + ").");
     if (actual === "rosc" && p.afterRoscRise && p.cycleLen < T.cycle - T.fastForwardStopsBefore - 2) score("Rhythm & pauses", P.earlyRoscCheck, "Pause " + p.k + ": paused early after the sudden ETCO₂ rise, a sign of ROSC.");
     // ROSC outcomes end the case
     if (actual === "rosc") {
@@ -1361,6 +1390,7 @@ window.SCENARIO = {
     $("cycleBar").classList.toggle("due", ct >= T.cycle - T.fastForwardStopsBefore);
     $("ffBadge").classList.toggle("hidden", !(S.ffTarget != null));
     const pb = $("pauseBtn"); if (pb) pb.classList.toggle("pulse", S.coached && S.phase === "running" && ct >= T.cycle - T.fastForwardStopsBefore);
+    const eb = $("eyesBtn"); if (eb) eb.classList.toggle("pulse", S.coached && S.phase === "running" && S.cycleStart != null && ct >= T.cycle - T.allEyesWindow && S.eyesAt == null);
   }
   // newest entries at the top; keeps the reader's place if they've scrolled back
   const LOG_TAGS = { dx: "Rhythm", drug: "Drug", shock: "Shock", pause: "Pause" };
@@ -1407,12 +1437,13 @@ window.SCENARIO = {
       if (lastVaso !== S.cycle) return "Non-shockable rhythm and IV access: a vasopressor is due this cycle. Check the dosing chart for the dose.";
     }
     if (S.roscOnsetSim != null && S.ffTarget != null) return "ETCO₂ just rose sharply, a possible sign of ROSC. Tap Normal speed.";
-    if (S.roscOnsetSim != null && !S.team.some(m => m.task && m.task.type === "palpate")) return "ETCO₂ rose sharply: possible ROSC. Have someone palpate a pulse, then pause and check.";
-    if (S.roscOnsetSim != null) return "ETCO₂ rose sharply: possible ROSC. Pause and check now.";
+    if (S.roscOnsetSim != null && !S.team.some(m => m.task && m.task.type === "palpate")) return "ETCO₂ rose sharply: possible ROSC. Have someone palpate a pulse, then pause compressions.";
+    if (S.roscOnsetSim != null) return "ETCO₂ rose sharply: possible ROSC. Pause compressions now.";
     if (cycleTime() >= T.cycle - 20 && !S.team.some(m => m.task && m.task.type === "palpate")) return "The cycle is ending soon: get someone in position to palpate the pulse before you pause.";
-    if (cycleTime() >= T.cycle - T.fastForwardStopsBefore) return "Two minutes: pause and check the rhythm and pulse.";
+    if (cycleTime() >= T.cycle - T.allEyesWindow && S.eyesAt == null) return "The pause is coming: tap All eyes on the ECG so the whole team reads the rhythm with you.";
+    if (cycleTime() >= T.cycle - T.fastForwardStopsBefore) return "Two minutes: pause compressions and check the rhythm and pulse.";
     if (S.pauses.length === 0 && S.drugs.some(d => d.beforeDx)) return "Diagnose the rhythm before giving drugs.";
-    return "Everything's running. Tap Finish cycle to skip ahead to the end of the cycle.";
+    return "Everything's running. Tap " + ffLabel() + " to fast-forward. Compressions keep going, and nothing pauses until you tap Pause compressions.";
   }
   function renderHint() {
     const h = $("hint"); if (!S.coached) { h.classList.add("hidden"); return; }
@@ -1423,9 +1454,9 @@ window.SCENARIO = {
   function taskText(m) {
     if (!m.task) return "Standing by";
     const t = m.task, base = { palpate: "Palpating pulse", compress: "Compressions", ventilate: "Ventilating", intubate: "Intubating", ecg: "Attaching ECG", capno: "Connecting capnograph", checkiv: "Checking IV", placeiv: "Placing IV", drug: "Drawing up " + (t.data && t.data.name), charge: "Charging defib" }[t.type];
-    if (t.type === "compress") return base + " · " + fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "");
-    if (t.waiting) return "Capnograph ready · waiting for the tube";
-    if (t.dur) return base + " · " + Math.max(1, Math.ceil(t.dur - (S.sim - t.start))) + " s left";
+    if (t.type === "compress") return [base, fmt(S.sim - (m.compressStart || t.start)) + (S.phase === "pause" ? " (paused)" : "")];
+    if (t.waiting) return ["Capnograph ready", "waiting for the tube"];
+    if (t.dur) return [base, Math.max(1, Math.ceil(t.dur - (S.sim - t.start))) + " s left"];
     return base;
   }
   function renderRoster() {
@@ -1435,15 +1466,17 @@ window.SCENARIO = {
       S.team.forEach(m => {
         const b = el("button", "member"); b.type = "button"; b.dataset.id = m.id;
         const dot = el("span", "dot"); dot.style.background = m.shirt;
-        const n = el("span", "mname", m.name), st = el("span", "mtask");
+        const n = el("span", "mname", m.name), st = el("span", "mtask"), tm = el("span", "mtime");
         const bar = el("span", "mbar"); bar.appendChild(el("i"));
-        b.append(dot, n, st, bar);
+        b.append(dot, n, st, tm, bar);
         b.addEventListener("click", () => openTaskMenu(m.id));
         box.appendChild(b);
       });
     }
     S.team.forEach((m, i) => {
-      const b = box.children[i]; b.querySelector(".mtask").textContent = taskText(m);
+      const b = box.children[i], tx = taskText(m), two = Array.isArray(tx);
+      b.querySelector(".mtask").textContent = two ? tx[0] : tx;
+      const tmEl = b.querySelector(".mtime"); tmEl.textContent = two ? tx[1] : ""; tmEl.style.display = two ? "" : "none";
       const t = m.task, pct = t && t.dur ? Math.min(100, (S.sim - t.start) / t.dur * 100) : 0;
       b.querySelector(".mbar").style.visibility = t && t.dur ? "visible" : "hidden";
       b.querySelector(".mbar i").style.width = pct + "%";
@@ -1463,17 +1496,19 @@ window.SCENARIO = {
       ff = el("button", "btn ghost", "Normal speed");
       ff.addEventListener("click", () => { S.ffTarget = null; S.rate = 1; log("Back to normal speed."); renderActions(); });
     } else {
-      ff = el("button", "btn ghost", "Finish cycle"); ff.disabled = !(S.cycleStart != null && ct < T.cycle - T.fastForwardStopsBefore - 1);
+      ff = el("button", "btn ghost", ffLabel()); ff.disabled = !(S.cycleStart != null && ct < T.cycle - T.fastForwardStopsBefore - 1);
       ff.addEventListener("click", () => { S.ffTarget = S.cycleStart + T.cycle - T.fastForwardStopsBefore; S.ffRealLeft = T.fastForwardRealSeconds; renderActions(); });
     }
-    const pause = el("button", "btn", "Pause and check"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
+    const pause = el("button", "btn", "Pause compressions"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
     pause.addEventListener("click", startPause);
-    const row = el("div", "arow"); row.append(pause, ff);
+    const eyes = el("button", "btn eyes", "All eyes on the ECG"); eyes.id = "eyesBtn"; eyes.disabled = S.cycleStart == null;
+    eyes.addEventListener("click", allEyes);
+    const row = el("div", "arow"); row.append(eyes, pause, ff);
     box.append(row);
   }
   function renderPausePanel(box) {
     const p = S.pause;
-    const head = el("div", "phead"); head.append(el("b", null, "Pause and check"), el("span", "pcount", "10 s")); head.lastChild.id = "pcount";
+    const head = el("div", "phead"); head.append(el("b", null, "Compressions paused"), el("span", "pcount", "10 s")); head.lastChild.id = "pcount";
     box.appendChild(head);
     // pulse check: only an assigned palpator reports
     const palp = S.team.find(m => m.task && m.task.type === "palpate");
@@ -1551,7 +1586,7 @@ window.SCENARIO = {
     if (S.phase !== "running") return;
     const m = S.team.find(x => x.id === id);
     modal(m.name + ": what should they do?", body => {
-      const cur = el("p", "muted small", "Currently: " + taskText(m)); body.appendChild(cur);
+      const cur = el("p", "muted small", "Currently: " + [].concat(taskText(m)).join(" · ")); body.appendChild(cur);
       const opts = [];
       if (m.task && m.task.type === "compress") opts.push(["coach", "Troubleshoot compressions", "Coach " + m.name, true]);
       else opts.push(["compress", "Start compressions", "Chest", true]);
@@ -1588,7 +1623,7 @@ window.SCENARIO = {
   function openPauseMenu(id) {
     const m = S.team.find(x => x.id === id), p = S.pause;
     modal(m.name + ": during the pause", body => {
-      body.appendChild(el("p", "muted small", "Currently: " + taskText(m)));
+      body.appendChild(el("p", "muted small", "Currently: " + [].concat(taskText(m)).join(" · ")));
       const list = el("div", "tlist");
       const isComp = m.id === p.prevCompressor, palpating = m.task && m.task.type === "palpate";
       const b = el("button", "titem"); b.type = "button"; b.disabled = isComp || palpating;
@@ -1944,7 +1979,7 @@ window.SCENARIO = {
     const by = {
       "BLS": P.compressionsFast + P.ventilationCycle1 + (SC.poorTechniqueFirstCompressor ? P.coachingCorrect : 0) + (SC.poorVentilationFirst ? P.ventCoachingCorrect : 0),
       "Monitoring & access": P.ecgCycle1 + P.capnoCycle1 + P.ivCycle1,
-      "Rhythm & pauses": (N - 1) * (P.correctRhythm + pause + P.rotation + P.pulseReady) + (P.rosc + pause + P.pulseReady + P.earlyRoscCheck),
+      "Rhythm & pauses": (N - 1) * (P.correctRhythm + pause + P.rotation + P.pulseReady) + (P.rosc + pause + P.pulseReady + P.earlyRoscCheck) + N * P.allEyesOnEcg,
       "Drugs": vasoDoses * (P.vasopressorOnTime + P.correctDose) + (SC.indicated.includes("atropine") ? P.atropineEarly + P.correctDose : 0),
       "Defibrillation": 0
     };
@@ -2047,6 +2082,8 @@ window.SCENARIO = {
   };
   const CAT_LABEL = { asys: "asystole", pea: "PEA", vf: "VF", pvt: "pulseless VT", rosc: "ROSC" };
 
+  // a debrief line with its own mark (good / partial / missed), so a mixed box shows which parts went well
+  const mk = (state, t) => ({ state, t });
   function algoStatus() {
     const st = {}, set = (id, state, lines) => { st[id] = { state, lines: lines || [] }; };
     const pauses = S.pauses, catOf = p => L.byKey(p.rhythm).cat;
@@ -2100,16 +2137,20 @@ window.SCENARIO = {
     }
 
     // ---- pause and check ----
-    if (!pauses.length) { set("pauseCheck", "missed", ["No pause and check was done."]); set("rhythmDx", "missed", ["No rhythm diagnosis was made."]); set("pulse", "na", []); }
+    if (!pauses.length) { set("pauseCheck", "missed", ["Compressions were never paused for a rhythm and pulse check."]); set("rhythmDx", "missed", ["No rhythm diagnosis was made."]); set("pulse", "na", []); }
     else {
       const over = pauses.filter(p => p.dur > T.pauseBudget);
-      set("pauseCheck", over.length ? "partial" : "good", pauses.map(p => "Pause " + p.k + ": " + p.dur.toFixed(1) + " s" + (p.dur > T.pauseBudget ? " (over 10 s)" : "") + "."));
-      const right = pauses.filter(p => p.dx === catOf(p));
-      set("rhythmDx", right.length === pauses.length ? "good" : right.length ? "partial" : "missed",
-        pauses.map(p => "Pause " + p.k + ": called " + CAT_LABEL[p.dx] + (p.dx === catOf(p) ? ", correct." : "; it was " + CAT_LABEL[catOf(p)] + ".")));
-      const pl = pauses.map(p => "Pause " + p.k + ": " + (p.pulseChecked ? (S.team.find(m => m.id === p.pulseBy) || {}).name + (p.pulseReady ? " was palpating before the pause." : " got in position during the pause.") : "no pulse check."));
+      set("pauseCheck", over.length ? "partial" : "good", pauses.map(p => mk(p.dur <= T.pauseBudget ? "good" : "partial", "Pause " + p.k + ": " + p.dur.toFixed(1) + " s" + (p.dur > T.pauseBudget ? " (over 10 s)" : "") + ".")));
+      const dxLine = p => p.dx !== catOf(p) ? mk("missed", "Pause " + p.k + ": called " + CAT_LABEL[p.dx] + "; it was " + CAT_LABEL[catOf(p)] + "." + (p.eyes ? " (The team was watching the ECG.)" : ""))
+        : p.eyes ? mk("good", "Pause " + p.k + ": called " + CAT_LABEL[p.dx] + ", correct, with the whole team watching the ECG.")
+        : mk("partial", "Pause " + p.k + ": called " + CAT_LABEL[p.dx] + ", correct, but there was no \"All eyes on the ECG\" call beforehand.");
+      const dl = pauses.map(dxLine);
+      set("rhythmDx", dl.every(l => l.state === "good") ? "good" : dl.every(l => l.state === "missed") ? "missed" : "partial", dl);
+      const pl = pauses.map(p => !p.pulseChecked ? mk("missed", "Pause " + p.k + ": nobody was palpating, so no pulse was checked (" + P.noPulseCheck + ").")
+        : p.pulseReady ? mk("good", "Pause " + p.k + ": " + (S.team.find(m => m.id === p.pulseBy) || {}).name + " was already palpating before the pause, so the pulse was checked right away (+" + P.pulseReady + ").")
+        : mk("partial", "Pause " + p.k + ": " + (S.team.find(m => m.id === p.pulseBy) || {}).name + " only got in position during the pause (+" + P.pulseDuringPause + "; +" + P.pulseReady + " if palpating before the pause)."));
       const none = pauses.filter(p => !p.pulseChecked).length, late = pauses.filter(p => p.pulseChecked && !p.pulseReady).length;
-      set("pulse", none ? "missed" : late ? "partial" : "good", pl);
+      set("pulse", none === pauses.length ? "missed" : (none || late) ? "partial" : "good", pl);
     }
 
     // ---- branches ----
@@ -2269,7 +2310,8 @@ window.SCENARIO = {
     } else {
       const cat = catOf(pz);
       set("pauseCheck", pz.dur <= T.pauseBudget ? "good" : "partial", ["Pause " + pz.k + " took " + pz.dur.toFixed(1) + " s" + (pz.dur > T.pauseBudget ? ", over the 10-second limit." : ".")]);
-      set("rhythmDx", pz.dx === cat ? "good" : "missed", ["Called " + CAT_LABEL[pz.dx] + (pz.dx === cat ? ", correct." : "; it was " + CAT_LABEL[cat] + ".")]);
+      set("rhythmDx", pz.dx !== cat ? "missed" : pz.eyes ? "good" : "partial", ["Called " + CAT_LABEL[pz.dx] + (pz.dx === cat ? ", correct." : "; it was " + CAT_LABEL[cat] + "."),
+        pz.eyes ? "You called \"All eyes on the ECG\" before the pause." : "No \"All eyes on the ECG\" call before the pause."]);
       const pzBy = (S.team.find(m => m.id === pz.pulseBy) || {}).name;
       if (!pz.pulseChecked) set("pulse", "missed", ["Nobody checked the pulse during this pause."]);
       else set("pulse", pz.pulseReady ? "good" : "partial", [pzBy + (pz.pulseReady ? " was palpating before the pause" : " only got in position during the pause") + " and " + (cat === "rosc" ? "felt a pulse." : "felt no pulse.")]);
@@ -2374,7 +2416,9 @@ window.SCENARIO = {
     if (!id) return '<p class="muted">Tap any box on the algorithm to see what happened in this case.</p>';
     const b = BOX[id], s = ALGO.st[id] || { state: "na", lines: [] }, k = STATE_LOOK[s.state];
     return '<div class="adhead"><b>' + esc(b[6] || b[4]) + (b[5] && !b[6] ? ' <span class="adsub">' + esc(b[5]) + '</span>' : '') + '</b><span class="adpill" style="background:' + k.stroke + '">' + esc(k.label) + '</span></div>' +
-      (s.lines.length ? '<ul>' + s.lines.map(l => '<li>' + esc(l) + '</li>').join("") + '</ul>' : '');
+      (s.lines.length ? '<ul' + (s.lines.some(l => typeof l === "object") ? ' class="marked"' : '') + '>' + s.lines.map(l => typeof l === "object"
+        ? '<li class="mk-' + l.state + '"><span class="mki" style="background:' + STATE_LOOK[l.state].stroke + '">' + STATE_LOOK[l.state].icon + '</span>' + esc(l.t) + '</li>'
+        : '<li>' + esc(l) + '</li>').join("") + '</ul>' : '');
   }
   function selectBox(id) {
     algoSel = id;
@@ -2466,6 +2510,7 @@ window.SCENARIO = {
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".ffLabel").forEach(e => e.textContent = ffLabel());
     $("scTitle").textContent = SC.title; $("scSub").textContent = SC.subtitle; $("scSummary").textContent = SC.summary;
     const chips = $("scTeam"); SC.team.forEach(t => { const c = el("span", "tchip"); const d = el("span", "dot"); d.style.background = t.shirt; c.append(d, document.createTextNode(t.name)); chips.appendChild(c); });
     $("startStd").addEventListener("click", () => start(false));
