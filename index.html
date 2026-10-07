@@ -999,7 +999,7 @@ window.SCENARIO = {
       variant: L.variant(Math.random() * 100),
       outcome: null,
       lastReal: realNow(),
-      artT: 0, artPrev: 0, breathPh: 0, breathPrev: 0, breathIdx: -1, breathEt: null,
+      artT: 0, artPrev: 0, breathPh: 0, breathPrev: 0, breathIdx: -1, breathEt: null, breathRead: false, etco2Read: null,   // etco2Read: the number on the monitor, updated at the end of each plateau
       eyesAt: null,    // case time of the last "All eyes on the ECG" call
       alsOrdered: {},  // when each ALS step was first ordered: ecg, capno, iv, reversal
       alsErrors: [],   // ALS steps ordered out of sequence
@@ -1427,7 +1427,7 @@ window.SCENARIO = {
     if (!S.iv && !busy("checkiv") && !busy("placeiv")) return "This patient already has an IV catheter: have someone check it.";
     if (S.capno && etco2Now() <= 18) {
       if (!S.poorQuality && S.sim - c.compressStart > 130) return c.name + " has been compressing for over 2 minutes and is tiring, which lowers ETCO₂. Swap in a fresh compressor.";
-      return "ETCO₂ is " + etco2Now() + " mmHg (18 or below): tap Troubleshoot compressions above " + c.name + ".";
+      return "ETCO₂ is " + (S.etco2Read != null ? Math.round(S.etco2Read) : etco2Now()) + " mmHg (18 or below): tap Troubleshoot compressions above " + c.name + ".";
     }
     const vaso = S.drugs.filter(d => SC.vasopressors.includes(d.key) && !d.beforeDx);
     const nonShock = S.pauses.some(p => L.byKey(p.rhythm).cat !== "rosc");
@@ -1937,7 +1937,7 @@ window.SCENARIO = {
       // breath phase advances smoothly (faster during fast-forward); sec = seconds into the breath on a 6-s scale
       const slot = i % CO2_N, ph = S.breathPrev + (i - c0 + 1) / nC * (S.breathPh - S.breathPrev);
       const bi = Math.floor(ph), sec = (ph - bi) * 6; let v = 0;
-      if (bi !== S.breathIdx) { S.breathIdx = bi; S.breathEt = et; }   // each breath keeps the value it started with
+      if (bi !== S.breathIdx) { S.breathIdx = bi; S.breathEt = et; S.breathRead = false; }   // each breath keeps the value it started with
       const be = S.breathEt == null ? et : S.breathEt;
       if (vent && S.phase !== "ended") {
         if (sec < 1.0) v = 0;                                          // inspiration
@@ -1946,6 +1946,8 @@ window.SCENARIO = {
         else if (sec < 2.9) v = be * (1 - (sec - 2.7) / 0.2);          // back to zero
         else v = 0;                                                    // zero until the next exhalation
       }
+      // like a real capnograph, the displayed ETCO2 is read at the end of the plateau, as the downstroke begins
+      if (vent && S.phase !== "ended" && sec >= 2.7 && !S.breathRead) { S.breathRead = true; S.etco2Read = be; }
       co2Val[slot] = v; co2Stamp[slot] = i;
     }
     co2LastIdx = idxNow;
@@ -1966,9 +1968,10 @@ window.SCENARIO = {
       if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y);
     }
     ctx.stroke();
-    const shown = vent && S.breathEt != null ? Math.round(S.breathEt) : "--";
+    if (!vent) S.etco2Read = null;                                     // no breaths, no reading
+    const shown = S.etco2Read != null ? Math.round(S.etco2Read) : "--";
     $("co2Val").textContent = shown;
-    $("co2Box").classList.toggle("low", S.coached && vent && S.phase === "running" && et <= 18);
+    $("co2Box").classList.toggle("low", S.coached && S.etco2Read != null && S.phase === "running" && shown <= 18);
   }
 
   // ---------- the best possible score for this scenario ----------
