@@ -913,7 +913,7 @@ window.SCENARIO = {
   ],
   hasIV: true,
   poorTechniqueFirstCompressor: true,      // built-in low-ETCO2 challenge: compressions stay poor (whoever compresses) until the leader troubleshoots
-  peaSequence: ["pea94n", "pea38w", "pea60w"], // rhythm found at pause 1, 2, 3 (and after)
+  rhythmSequence: ["asys", "pea38w", "pea94n"],  // rhythm found at pause 1, 2, 3 (the last repeats if the case runs longer)
   roscAtPause: [4],                        // fixed, so every learner gets the same 4 cycles and the same chances to score
                                            // (ROSC happens at a random point within cycle 4; it comes later only if the learner's own errors delay it)
   indicated: ["epinephrine", "vasopressin", "atropine"],
@@ -987,7 +987,7 @@ window.SCENARIO = {
   function log(msg, kind) { S.log.push({ t: S.sim, msg, kind: kind || "" }); renderLog(); }
   function score(cat, pts, msg) { S.events.push({ t: S.sim, cat, pts, msg }); }
   function say(m, text, secs) { m.bubble = { text, until: realNow() + (secs || 2.6) }; }
-  function peaFor(k) { return SC.peaSequence[Math.min(k - 1, SC.peaSequence.length - 1)]; }
+  function peaFor(k) { return SC.rhythmSequence[Math.min(k - 1, SC.rhythmSequence.length - 1)]; }
   function rhythmKeyNow() {
     // the underlying rhythm during cycle k (what the next pause will find), with ROSC appearing midway
     const k = Math.max(1, S.cycle);
