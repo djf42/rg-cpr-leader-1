@@ -1224,8 +1224,8 @@ window.SCENARIO = {
   // ---------- pause and check ----------
   function allEyes() {
     if (S.phase !== "running" || S.cycleStart == null) return;
+    if (!S.ecg) return;
     log("Leader: \"All eyes on the ECG.\"");
-    if (!S.ecg) { const w = S.team.find(m => !(m.task && m.task.type === "compress")) || S.team[0]; say(w, "The ECG isn't attached yet", 3); return; }
     S.eyesAt = S.sim;
     S.team.forEach(m => { if (!(m.task && m.task.type === "compress")) say(m, "Watching the ECG", 2.6); });   // the compressor keeps their focus on compressing
   }
@@ -1390,7 +1390,7 @@ window.SCENARIO = {
     $("cycleBar").classList.toggle("due", ct >= T.cycle - T.fastForwardStopsBefore);
     $("ffBadge").classList.toggle("hidden", !(S.ffTarget != null));
     const pb = $("pauseBtn"); if (pb) pb.classList.toggle("pulse", S.coached && S.phase === "running" && ct >= T.cycle - T.fastForwardStopsBefore);
-    const eb = $("eyesBtn"); if (eb) eb.classList.toggle("pulse", S.coached && S.phase === "running" && S.cycleStart != null && ct >= T.cycle - T.allEyesWindow && S.eyesAt == null);
+    const eb = $("eyesBtn"); if (eb) eb.classList.toggle("pulse", S.coached && S.phase === "running" && S.cycleStart != null && S.ecg && ct >= T.cycle - T.allEyesWindow && S.eyesAt == null);
   }
   // newest entries at the top; keeps the reader's place if they've scrolled back
   const LOG_TAGS = { dx: "Rhythm", drug: "Drug", shock: "Shock", pause: "Pause" };
@@ -1440,7 +1440,7 @@ window.SCENARIO = {
     if (S.roscOnsetSim != null && !S.team.some(m => m.task && m.task.type === "palpate")) return "ETCO₂ rose sharply: possible ROSC. Have someone palpate a pulse, then pause compressions.";
     if (S.roscOnsetSim != null) return "ETCO₂ rose sharply: possible ROSC. Pause compressions now.";
     if (cycleTime() >= T.cycle - 20 && !S.team.some(m => m.task && m.task.type === "palpate")) return "The cycle is ending soon: get someone in position to palpate the pulse before you pause.";
-    if (cycleTime() >= T.cycle - T.allEyesWindow && S.eyesAt == null) return "The pause is coming: tap All eyes on the ECG so the whole team reads the rhythm with you.";
+    if (S.ecg && cycleTime() >= T.cycle - T.allEyesWindow && S.eyesAt == null) return "The pause is coming: tap All eyes on the ECG so the whole team reads the rhythm with you.";
     if (cycleTime() >= T.cycle - T.fastForwardStopsBefore) return "Two minutes: pause compressions and check the rhythm and pulse.";
     if (S.pauses.length === 0 && S.drugs.some(d => d.beforeDx)) return "Diagnose the rhythm before giving drugs.";
     return "Everything's running. Tap " + ffLabel() + " to fast-forward. Compressions keep going, and nothing pauses until you tap Pause compressions.";
@@ -1501,7 +1501,7 @@ window.SCENARIO = {
     }
     const pause = el("button", "btn", "Pause compressions"); pause.id = "pauseBtn"; pause.disabled = S.cycleStart == null;
     pause.addEventListener("click", startPause);
-    const eyes = el("button", "btn eyes", "All eyes on the ECG"); eyes.id = "eyesBtn"; eyes.disabled = S.cycleStart == null;
+    const eyes = el("button", "btn eyes", "All eyes on the ECG"); eyes.id = "eyesBtn"; eyes.disabled = S.cycleStart == null || !S.ecg;   // greyed out until the ECG leads are on
     eyes.addEventListener("click", allEyes);
     const row = el("div", "arow"); row.append(eyes, pause, ff);
     box.append(row);
